@@ -8,90 +8,80 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#0a0c11; --panel:#13161f; --panel2:#191d29; --line:#272d3d; --line2:#333a4e;
-    --txt:#e8ebf3; --muted:#98a2b8; --accent:#7c5cff; --accent2:#22d3ee; --good:#34d399; --bad:#f87171;
-  }
+  :root{--bg:#0a0c11;--panel:#13161f;--panel2:#191d29;--line:#272d3d;--line2:#333a4e;
+    --txt:#e8ebf3;--muted:#98a2b8;--accent:#7c5cff;--accent2:#22d3ee;--good:#34d399;--bad:#f87171;}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:radial-gradient(1100px 640px at 82% -12%, #181d31 0%, var(--bg) 52%);
-    color:var(--txt);font-family:'Inter',sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;padding-bottom:70px;min-height:100vh}
+  body{background:radial-gradient(1100px 640px at 82% -12%, #181d31 0%, var(--bg) 52%);color:var(--txt);
+    font-family:'Inter',sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;padding-bottom:70px;min-height:100vh}
   .wrap{max-width:980px;margin:0 auto;padding:0 5.5%}
   nav{display:flex;align-items:center;justify-content:space-between;padding:22px 0;gap:12px;flex-wrap:wrap}
   .brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk';font-weight:700;font-size:1.15rem}
   .brand .dot{width:13px;height:13px;border-radius:4px;background:linear-gradient(135deg,var(--accent),var(--accent2))}
-  .status{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted);border:1px solid var(--line);
-    background:#0e121b;padding:5px 11px;border-radius:20px}
+  .status{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted);border:1px solid var(--line);background:#0e121b;padding:5px 11px;border-radius:20px}
   .sdot{width:9px;height:9px;border-radius:50%;background:#5b6473;transition:.3s}
   .sdot.ok{background:var(--good);box-shadow:0 0 0 3px rgba(52,211,153,.15)}
   .sdot.bad{background:var(--bad);box-shadow:0 0 0 3px rgba(248,113,113,.15)}
   .sdot.wait{background:var(--accent2);animation:pulse 1s infinite}
   @keyframes pulse{50%{opacity:.35}}
-
-  .hero{text-align:center;padding:26px 0 30px}
-  .hero h1{font-family:'Space Grotesk';font-weight:700;font-size:clamp(2rem,5.4vw,3.2rem);line-height:1.05;letter-spacing:-.015em}
+  .hero{text-align:center;padding:24px 0 28px}
+  .hero h1{font-family:'Space Grotesk';font-weight:700;font-size:clamp(2rem,5.4vw,3.1rem);line-height:1.05;letter-spacing:-.015em}
   .hero h1 .g{background:linear-gradient(100deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-  .hero p{color:var(--muted);font-size:1.08rem;margin-top:14px;max-width:54ch;margin-inline:auto}
-
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:24px;margin-bottom:18px;box-shadow:0 24px 60px -30px rgba(0,0,0,.7)}
-  .step{display:flex;align-items:center;gap:11px;margin-bottom:15px}
+  .hero p{color:var(--muted);font-size:1.05rem;margin-top:13px;max-width:56ch;margin-inline:auto}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:23px;margin-bottom:17px;box-shadow:0 24px 60px -30px rgba(0,0,0,.7)}
+  .step{display:flex;align-items:center;gap:11px;margin-bottom:14px}
   .step .num{width:25px;height:25px;border-radius:8px;background:var(--panel2);border:1px solid var(--line2);display:grid;place-items:center;font-family:'Space Grotesk';font-weight:700;font-size:.82rem;color:var(--accent2)}
-  .step h2{font-family:'Space Grotesk';font-size:1.12rem;font-weight:600}
+  .step h2{font-family:'Space Grotesk';font-size:1.1rem;font-weight:600}
   .step .opt{margin-left:auto;font-size:.8rem;color:var(--muted)}
-
-  .drop{border:2px dashed var(--line2);border-radius:15px;padding:28px 20px;text-align:center;cursor:pointer;transition:.18s;background:#0e121b}
+  .drop{border:2px dashed var(--line2);border-radius:15px;padding:26px 20px;text-align:center;cursor:pointer;transition:.18s;background:#0e121b}
   .drop:hover,.drop.over{border-color:var(--accent);background:rgba(124,92,255,.06)}
-  .drop .big{font-size:2rem}
-  .drop b{font-family:'Space Grotesk';font-weight:600;display:block;margin-top:8px}
-  .drop span{color:var(--muted);font-size:.86rem}
-  .files{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px;margin-top:15px}
+  .drop .big{font-size:1.9rem}
+  .drop b{font-family:'Space Grotesk';font-weight:600;display:block;margin-top:7px}
+  .drop span{color:var(--muted);font-size:.85rem}
+  .files{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px;margin-top:14px}
   .files:empty{display:none}
   .fileChip{position:relative;background:#0e121b;border:1px solid var(--line);border-radius:11px;overflow:hidden}
   .fileChip video{width:100%;height:84px;object-fit:cover;background:#05070c;display:block}
   .fileChip .meta{padding:8px 9px}
   .fileChip .nm{font-size:.78rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .fileChip .sz{font-size:.7rem;color:var(--muted);margin-top:2px}
+  .fileChip .idx{position:absolute;top:6px;left:6px;font-size:.62rem;font-weight:700;background:rgba(8,10,16,.8);color:var(--accent2);padding:2px 6px;border-radius:5px}
   .fileChip .x{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(8,10,16,.78);color:#fff;cursor:pointer;font-size:.85rem;display:grid;place-items:center}
   .fileChip .x:hover{background:#e5484d}
-  .primary{position:absolute;bottom:34px;left:6px;font-size:.6rem;font-weight:700;background:var(--accent);color:#fff;padding:2px 6px;border-radius:5px}
-
   .opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px}
-  .fmt{background:#0e121b;border:1px solid var(--line);border-radius:13px;padding:14px;cursor:pointer;transition:.15s;user-select:none}
+  .fmt{background:#0e121b;border:1px solid var(--line);border-radius:13px;padding:13px;cursor:pointer;transition:.15s;user-select:none}
   .fmt:hover{border-color:var(--line2)}
   .fmt.sel{border-color:var(--accent);background:rgba(124,92,255,.10);box-shadow:0 0 0 1px var(--accent) inset}
-  .fmt .ic{font-size:1.3rem}
-  .fmt .nm{font-family:'Space Grotesk';font-weight:600;font-size:.95rem;margin-top:7px}
-  .fmt .ar{font-size:.72rem;color:var(--muted);margin-top:3px}
-  .fmt.sel .ar{color:var(--accent2)}
-
+  .fmt .ic{font-size:1.25rem}.fmt .nm{font-family:'Space Grotesk';font-weight:600;font-size:.93rem;margin-top:6px}
+  .fmt .ar{font-size:.72rem;color:var(--muted);margin-top:3px}.fmt.sel .ar{color:var(--accent2)}
   .ctl label{font-size:.8rem;color:var(--muted);display:block;margin-bottom:7px}
   select{width:100%;max-width:260px;background:#0e121b;color:var(--txt);border:1px solid var(--line2);border-radius:10px;padding:11px 12px;font-family:'Inter';font-size:.9rem;cursor:pointer}
-
+  .note{font-size:.8rem;color:var(--muted);margin-top:12px;border-left:2px solid var(--line2);padding-left:11px}
   .exec{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px}
   .go{font-family:'Space Grotesk';font-weight:700;font-size:1.05rem;color:#fff;border:none;cursor:pointer;padding:15px 34px;border-radius:13px;background:linear-gradient(120deg,var(--accent),var(--accent2));transition:.18s;box-shadow:0 14px 34px -12px rgba(124,92,255,.7)}
   .go:hover{filter:brightness(1.08);transform:translateY(-1px)}
   .go:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;transform:none;filter:none}
   .hint{color:var(--muted);font-size:.85rem}
-
-  #run{display:none}
-  #run.show{display:block;animation:fade .35s ease}
+  #run{display:none}#run.show{display:block;animation:fade .35s ease}
   @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-  .results{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-top:6px}
+  .log{background:#07090e;border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;line-height:1.65;max-height:210px;overflow:auto;margin-bottom:16px}
+  .lline{white-space:pre-wrap;word-break:break-word;color:#c6cde0}
+  .lt{color:#5d6680;margin-right:8px}
+  .lline.ok{color:var(--good)}.lline.bad{color:var(--bad)}
+  .results{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
   .res{background:#0e121b;border:1px solid var(--line);border-radius:14px;overflow:hidden}
-  .res .head{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-bottom:1px solid var(--line)}
-  .res .rn{font-family:'Space Grotesk';font-weight:600;font-size:.92rem}
-  .res .ar{font-size:.68rem;font-weight:700;color:var(--accent2)}
-  .res .body{min-height:150px;display:grid;place-items:center;padding:14px;text-align:center}
+  .res .head{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;border-bottom:1px solid var(--line)}
+  .res .rn{font-family:'Space Grotesk';font-weight:600;font-size:.9rem}.res .ar{font-size:.68rem;font-weight:700;color:var(--accent2)}
+  .res .body{min-height:140px;display:grid;place-items:center;padding:14px;text-align:center}
   .res video{width:100%;display:block;background:#000;max-height:340px}
-  .spin{width:30px;height:30px;border-radius:50%;border:3px solid var(--line2);border-top-color:var(--accent2);animation:spin .7s linear infinite;margin:0 auto 10px}
+  .spin{width:28px;height:28px;border-radius:50%;border:3px solid var(--line2);border-top-color:var(--accent2);animation:spin .7s linear infinite;margin:0 auto 10px}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .res .stat{font-size:.82rem;color:var(--muted)}
-  .res .err{color:var(--bad);font-size:.82rem;word-break:break-word}
-  .res .foot{padding:11px 13px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .res .stat{font-size:.8rem;color:var(--muted)}.res .err{color:var(--bad);font-size:.8rem;word-break:break-word}
+  .res .foot{padding:10px 13px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px}
   .res .meta{font-size:.72rem;color:var(--muted)}
   .dl{background:var(--panel2);border:1px solid var(--line2);color:var(--txt);border-radius:9px;padding:7px 12px;font-size:.8rem;text-decoration:none}
   .dl:hover{border-color:var(--accent)}
-  .note{font-size:.8rem;color:var(--muted);margin-top:12px;border-left:2px solid var(--line2);padding-left:11px}
-  .footnote{text-align:center;color:var(--muted);font-size:.82rem;margin-top:24px}
+  .footnote{text-align:center;color:var(--muted);font-size:.8rem;margin-top:22px}
 </style>
 </head>
 <body>
@@ -100,21 +90,18 @@
     <div class="brand"><span class="dot"></span> autoedit</div>
     <div class="status" id="status"><span class="sdot wait" id="sdot"></span><span id="stext">checking backend…</span></div>
   </nav>
-
   <div class="hero">
     <h1>Upload raw footage.<br><span class="g">Get finished videos.</span></h1>
-    <p>Drop in a clip, choose your outputs, and your AI production backend cuts, reframes and scores it — for real.</p>
+    <p>Drop in your clips — they're combined into one edit, then cut, reframed and scored on your backend.</p>
   </div>
 
   <div class="card">
     <div class="step"><span class="num">1</span><h2>Add your footage</h2><span class="opt" id="fileCount">no files yet</span></div>
-    <div class="drop" id="drop">
-      <div class="big">🎞️</div>
-      <b>Drag &amp; drop a video here</b>
-      <span>or click to browse (MP4, MOV, WebM). The first clip is processed.</span>
-    </div>
+    <div class="drop" id="drop"><div class="big">🎞️</div><b>Drag &amp; drop videos here</b>
+      <span>or click to browse (MP4, MOV, WebM). All clips are combined, in order.</span></div>
     <input type="file" id="fileInput" accept="video/*" multiple hidden>
     <div class="files" id="files"></div>
+    <div class="note">Tip: for a quick first test, use short clips (a few seconds each). Big phone videos take longer to upload + render on the free tier.</div>
   </div>
 
   <div class="card">
@@ -124,29 +111,17 @@
 
   <div class="card">
     <div class="step"><span class="num">3</span><h2>Length</h2></div>
-    <div class="ctl">
-      <label>Target cut length</label>
-      <select id="len">
-        <option value="8">~8 seconds</option>
-        <option value="12" selected>~12 seconds</option>
-        <option value="20">~20 seconds</option>
-        <option value="30">~30 seconds</option>
-      </select>
-    </div>
-    <div class="note">Captions, voice-over and music are coming next — the backend currently renders a
-      visual-first edit per format. Format + length are live.</div>
+    <div class="ctl"><label>Target cut length</label>
+      <select id="len"><option value="8">~8 seconds</option><option value="12" selected>~12 seconds</option>
+      <option value="20">~20 seconds</option><option value="30">~30 seconds</option></select></div>
   </div>
 
-  <div class="exec">
-    <button class="go" id="go" disabled>✦ Execute</button>
-    <span class="hint" id="hint">Add a clip and pick a format.</span>
-  </div>
+  <div class="exec"><button class="go" id="go" disabled>✦ Execute</button><span class="hint" id="hint">Add a clip and pick a format.</span></div>
 
   <div class="card" id="run" style="margin-top:22px">
-    <div class="step"><span class="num">▶</span><h2 id="runTitle">Rendering on your backend…</h2></div>
+    <div class="step"><span class="num">▶</span><h2 id="runTitle">Working…</h2></div>
+    <div class="log" id="log"></div>
     <div class="results" id="results"></div>
-    <div class="note" id="coldnote" style="display:none">First request can take 30–60s if the free-tier
-      server was asleep (cold start), then ~10–30s per clip to render.</div>
   </div>
 
   <div class="footnote">Backend: <span id="burl"></span></div>
@@ -157,136 +132,107 @@
   "use strict";
   var BACKEND_URL = (new URLSearchParams(location.search).get("backend")
       || "https://autoedit-backend.onrender.com").replace(/\/+$/, "");
-  document.getElementById("burl").textContent = BACKEND_URL;
+  var $ = function(id){ return document.getElementById(id); };
+  $("burl").textContent = BACKEND_URL;
 
   var FORMATS = {
-    reel:      {nm:"Instagram Reel", ic:"📸", ar:"9:16"},
-    short:     {nm:"YouTube Short",  ic:"▶️", ar:"9:16"},
-    tiktok:    {nm:"TikTok",         ic:"🎵", ar:"9:16"},
-    cinematic: {nm:"Cinematic",      ic:"🎬", ar:"16:9"},
-    travel:    {nm:"Travel Montage", ic:"🌍", ar:"16:9"},
-    square:    {nm:"Square (1:1)",   ic:"◼️", ar:"1:1"}
+    reel:{nm:"Instagram Reel",ic:"📸",ar:"9:16"}, short:{nm:"YouTube Short",ic:"▶️",ar:"9:16"},
+    tiktok:{nm:"TikTok",ic:"🎵",ar:"9:16"}, cinematic:{nm:"Cinematic",ic:"🎬",ar:"16:9"},
+    travel:{nm:"Travel Montage",ic:"🌍",ar:"16:9"}, square:{nm:"Square (1:1)",ic:"◼️",ar:"1:1"}
   };
   var state = { files:[], formats:new Set(["reel"]) };
-  var $ = function(id){ return document.getElementById(id); };
 
-  // ---- backend health ----
-  function setStatus(cls, txt){ $("sdot").className = "sdot " + cls; $("stext").textContent = txt; }
+  function setStatus(cls, txt){ $("sdot").className="sdot "+cls; $("stext").textContent=txt; }
   (function ping(){
-    setStatus("wait", "checking backend…");
-    fetch(BACKEND_URL + "/health", {cache:"no-store"})
-      .then(function(r){ return r.json().then(function(j){ return {r:r, j:j}; }); })
-      .then(function(o){
-        if(o.r.ok && o.j.status === "ok") setStatus("ok", "backend online · v" + o.j.version);
-        else setStatus("bad", "backend degraded (ffmpeg?)");
-      })
-      .catch(function(){ setStatus("bad", "backend unreachable"); });
+    setStatus("wait","checking backend…");
+    fetch(BACKEND_URL+"/health",{cache:"no-store"})
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
+      .then(function(o){ if(o.ok&&o.j.status==="ok") setStatus("ok","backend online · v"+o.j.version);
+                         else setStatus("bad","backend degraded"); })
+      .catch(function(){ setStatus("bad","backend unreachable"); });
   })();
 
-  // ---- format cards ----
-  (function(){
-    var c = $("formats");
-    Object.keys(FORMATS).forEach(function(k){
-      var f = FORMATS[k], el = document.createElement("div");
-      el.className = "fmt" + (state.formats.has(k) ? " sel" : "");
-      el.innerHTML = '<div class="ic">'+f.ic+'</div><div class="nm">'+f.nm+'</div><div class="ar">'+f.ar+'</div>';
-      el.onclick = function(){
-        if(state.formats.has(k)) state.formats.delete(k); else state.formats.add(k);
-        el.classList.toggle("sel"); refresh();
-      };
-      c.appendChild(el);
-    });
+  (function(){ var c=$("formats");
+    Object.keys(FORMATS).forEach(function(k){ var f=FORMATS[k],el=document.createElement("div");
+      el.className="fmt"+(state.formats.has(k)?" sel":"");
+      el.innerHTML='<div class="ic">'+f.ic+'</div><div class="nm">'+f.nm+'</div><div class="ar">'+f.ar+'</div>';
+      el.onclick=function(){ if(state.formats.has(k))state.formats.delete(k);else state.formats.add(k); el.classList.toggle("sel"); refresh(); };
+      c.appendChild(el); });
   })();
 
-  // ---- file upload ----
-  var drop = $("drop"), input = $("fileInput");
-  drop.onclick = function(){ input.click(); };
-  input.onchange = function(e){ addFiles(e.target.files); input.value = ""; };
-  ["dragenter","dragover"].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add("over"); }); });
-  ["dragleave","drop"].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove("over"); }); });
-  drop.addEventListener("drop", function(e){ if(e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); });
+  var drop=$("drop"), input=$("fileInput");
+  drop.onclick=function(){ input.click(); };
+  input.onchange=function(e){ addFiles(e.target.files); input.value=""; };
+  ["dragenter","dragover"].forEach(function(ev){ drop.addEventListener(ev,function(e){e.preventDefault();drop.classList.add("over");}); });
+  ["dragleave","drop"].forEach(function(ev){ drop.addEventListener(ev,function(e){e.preventDefault();drop.classList.remove("over");}); });
+  drop.addEventListener("drop",function(e){ if(e.dataTransfer&&e.dataTransfer.files) addFiles(e.dataTransfer.files); });
 
-  function addFiles(list){
-    Array.prototype.forEach.call(list, function(f){ if(f.type.indexOf("video") === 0) state.files.push(f); });
-    renderFiles(); refresh();
+  function addFiles(list){ Array.prototype.forEach.call(list,function(f){ if(f.type.indexOf("video")===0) state.files.push(f); }); renderFiles(); refresh(); }
+  function fmtSize(b){ return b>1e9?(b/1e9).toFixed(1)+" GB":(b/1e6).toFixed(1)+" MB"; }
+  function renderFiles(){ var c=$("files"); c.innerHTML="";
+    state.files.forEach(function(f,i){ var el=document.createElement("div"); el.className="fileChip"; var url=URL.createObjectURL(f);
+      el.innerHTML='<video src="'+url+'" muted preload="metadata" playsinline></video><span class="idx">#'+(i+1)+'</span>'+
+        '<div class="meta"><div class="nm">'+f.name+'</div><div class="sz">'+fmtSize(f.size)+'</div></div><button class="x" title="remove">✕</button>';
+      el.querySelector(".x").onclick=function(ev){ ev.stopPropagation(); state.files.splice(i,1); renderFiles(); refresh(); };
+      c.appendChild(el); });
+    $("fileCount").textContent = state.files.length ? state.files.length+" clip"+(state.files.length>1?"s":"")+" — combined in order" : "no files yet";
   }
-  function fmtSize(b){ return b > 1e9 ? (b/1e9).toFixed(1)+" GB" : (b/1e6).toFixed(1)+" MB"; }
-  function renderFiles(){
-    var c = $("files"); c.innerHTML = "";
-    state.files.forEach(function(f, i){
-      var el = document.createElement("div"); el.className = "fileChip";
-      var url = URL.createObjectURL(f);
-      el.innerHTML = '<video src="'+url+'" muted preload="metadata" playsinline></video>'+
-        (i===0 ? '<span class="primary">processed</span>' : '')+
-        '<div class="meta"><div class="nm">'+f.name+'</div><div class="sz">'+fmtSize(f.size)+'</div></div>'+
-        '<button class="x" title="remove">✕</button>';
-      el.querySelector(".x").onclick = function(ev){ ev.stopPropagation(); state.files.splice(i,1); renderFiles(); refresh(); };
-      c.appendChild(el);
-    });
-    $("fileCount").textContent = state.files.length ? state.files.length + " clip"+(state.files.length>1?"s":"")+" added" : "no files yet";
-  }
-
-  function refresh(){
-    var ok = state.files.length > 0 && state.formats.size > 0;
-    $("go").disabled = !ok;
-    $("hint").textContent = ok
-      ? state.formats.size + " output"+(state.formats.size>1?"s":"") + " from your first clip"
-      : (state.files.length === 0 ? "Add a clip." : "Pick at least one format.");
-  }
+  function refresh(){ var ok=state.files.length>0&&state.formats.size>0; $("go").disabled=!ok;
+    $("hint").textContent = ok ? state.files.length+" clip(s) → "+state.formats.size+" format(s)" : (state.files.length===0?"Add a clip.":"Pick a format."); }
   refresh();
 
-  // ---- execute: real upload to the backend, per format ----
+  // ---- logging ----
+  function logLine(msg, cls){ var el=document.createElement("div"); el.className="lline"+(cls?" "+cls:"");
+    var t=new Date().toTimeString().slice(0,8);
+    el.innerHTML='<span class="lt">'+t+'</span>'+msg.replace(/</g,"&lt;"); var box=$("log"); box.appendChild(el); box.scrollTop=box.scrollHeight; }
+
+  // ---- execute ----
   $("go").onclick = async function(){
-    if(state.files.length === 0 || state.formats.size === 0) return;
-    var file = state.files[0];
-    var budget = $("len").value;
-    var formats = Array.prototype.slice.call(state.formats);
+    try{
+      if(state.files.length===0||state.formats.size===0) return;
+      var budget=$("len").value, formats=Array.prototype.slice.call(state.formats);
+      $("run").classList.add("show"); $("runTitle").textContent="Working…";
+      $("log").innerHTML=""; $("results").innerHTML="";
+      $("run").scrollIntoView({behavior:"smooth",block:"start"});
+      logLine("Start: "+state.files.length+" clip(s), formats=["+formats.join(", ")+"], budget="+budget+"s");
 
-    $("run").classList.add("show");
-    $("runTitle").textContent = "Rendering on your backend…";
-    $("coldnote").style.display = "block";
-    var rc = $("results"); rc.innerHTML = "";
-    $("run").scrollIntoView({behavior:"smooth", block:"start"});
+      logLine("Checking backend at "+BACKEND_URL+" …");
+      try{ var h=await fetch(BACKEND_URL+"/health",{cache:"no-store"}); var hj=await h.json();
+        logLine("Backend "+hj.status+" — v"+hj.version+", ffmpeg="+hj.ffmpeg, h.ok?"ok":"bad"); }
+      catch(e){ logLine("Backend unreachable. Is it deployed and awake? Open "+BACKEND_URL+"/health","bad"); throw new Error("backend unreachable"); }
 
-    var cards = {};
-    formats.forEach(function(fmt){
-      var f = FORMATS[fmt], el = document.createElement("div"); el.className = "res";
-      el.innerHTML =
-        '<div class="head"><span class="rn">'+f.nm+'</span><span class="ar">'+f.ar+'</span></div>'+
-        '<div class="body"><div><div class="spin"></div><div class="stat">queued…</div></div></div>';
-      rc.appendChild(el); cards[fmt] = el;
-    });
-
-    for(var i=0;i<formats.length;i++){ await processOne(file, formats[i], budget, cards[formats[i]]); }
-
-    $("runTitle").textContent = "✓ Done";
-    $("coldnote").style.display = "none";
+      for(var i=0;i<formats.length;i++){ await processFormat(formats[i], budget); }
+      $("runTitle").textContent="✓ Finished"; logLine("All formats finished.","ok");
+    }catch(err){ $("runTitle").textContent="⚠ Stopped"; logLine("Stopped: "+(err&&err.message||err),"bad"); }
   };
 
-  async function processOne(file, fmt, budget, card){
-    var body = card.querySelector(".body");
-    body.innerHTML = '<div><div class="spin"></div><div class="stat">uploading + rendering…</div></div>';
-    var t0 = Date.now();
+  function makeCard(fmt){ var f=FORMATS[fmt], el=document.createElement("div"); el.className="res";
+    el.innerHTML='<div class="head"><span class="rn">'+f.nm+'</span><span class="ar">'+f.ar+'</span></div>'+
+      '<div class="body"><div><div class="spin"></div><div class="stat">queued…</div></div></div>';
+    $("results").appendChild(el); return el; }
+
+  async function processFormat(fmt, budget){
+    var card=makeCard(fmt), body=card.querySelector(".body");
+    var fd=new FormData(); state.files.forEach(function(f){ fd.append("files", f, f.name); });
+    var mb=(state.files.reduce(function(s,f){return s+f.size;},0)/1e6).toFixed(1);
+    body.innerHTML='<div><div class="spin"></div><div class="stat">uploading '+mb+' MB…</div></div>';
+    logLine("["+fmt+"] uploading "+state.files.length+" clip(s), "+mb+" MB (first run may wake the server, ~30–60s)…");
+    var t0=Date.now();
     try{
-      var res = await fetch(BACKEND_URL + "/process?format=" + encodeURIComponent(fmt) + "&budget=" + encodeURIComponent(budget),
-        { method:"POST", body:file });
-      if(!res.ok){
-        var msg = await res.text();
-        throw new Error("HTTP " + res.status + " — " + msg.slice(0,160));
-      }
-      var clips = res.headers.get("X-Clips") || "";
-      var dur = res.headers.get("X-Duration") || "";
-      var blob = await res.blob();
-      var url = URL.createObjectURL(blob);
-      var secs = ((Date.now()-t0)/1000).toFixed(1);
-      body.innerHTML = '<video controls playsinline src="'+url+'"></video>';
-      var foot = document.createElement("div"); foot.className = "foot";
-      foot.innerHTML = '<span class="meta">'+(dur?dur+'s · ':'')+(clips?clips.split(",").length+' clips · ':'')+secs+'s</span>'+
+      var res=await fetch(BACKEND_URL+"/process?format="+encodeURIComponent(fmt)+"&budget="+encodeURIComponent(budget),{method:"POST",body:fd});
+      if(!res.ok){ var txt=await res.text(); throw new Error("HTTP "+res.status+" — "+txt.slice(0,180)); }
+      logLine("["+fmt+"] server returned 200, downloading video…");
+      var clips=res.headers.get("X-Clips")||"", dur=res.headers.get("X-Duration")||"", srcs=res.headers.get("X-Sources")||"";
+      var blob=await res.blob(), url=URL.createObjectURL(blob), secs=((Date.now()-t0)/1000).toFixed(1);
+      body.innerHTML='<video controls playsinline src="'+url+'"></video>';
+      var foot=document.createElement("div"); foot.className="foot";
+      foot.innerHTML='<span class="meta">'+(dur?dur+'s · ':'')+(clips?clips.split(",").length+' clips · ':'')+(srcs?srcs+' src · ':'')+(blob.size/1e6).toFixed(1)+' MB</span>'+
         '<a class="dl" download="'+fmt+'.mp4" href="'+url+'">Download</a>';
       card.appendChild(foot);
+      logLine("["+fmt+"] ✓ done in "+secs+"s — "+(dur?dur+"s, ":"")+(clips?clips.split(",").length+" clips":"")+", "+(blob.size/1e6).toFixed(1)+" MB","ok");
     }catch(e){
-      body.innerHTML = '<div class="err">⚠ '+ (e && e.message ? e.message : "request failed") +
-        '<br><span class="stat">Is the backend awake? Check '+BACKEND_URL+'/health</span></div>';
+      body.innerHTML='<div class="err">⚠ '+(e&&e.message||"failed")+'</div>';
+      logLine("["+fmt+"] ✗ FAILED: "+(e&&e.message||e),"bad");
     }
   }
 })();
