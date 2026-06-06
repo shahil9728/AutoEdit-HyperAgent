@@ -8,6 +8,6 @@ services:
     plan: free
     region: oregon
     branch: main
-    healthCheckPath: /
+    healthCheckPath: /health
     autoDeploy: true
     # Render injects $PORT automatically; server.py reads it.

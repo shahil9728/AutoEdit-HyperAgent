@@ -10,7 +10,8 @@ auto-redeploys** — no hand-editing the running server.
 The backend is `server.py` (stdlib + ffmpeg):
 
 ```
-GET  /                                  health check (JSON)
+GET  /                                  liveness + info (JSON)
+GET  /health  (or /healthz)             health check: 200 ok, 503 if ffmpeg missing
 POST /process?format=reel&budget=12     body = raw video bytes -> rendered MP4
 ```
 

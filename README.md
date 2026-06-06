@@ -99,7 +99,8 @@ is a queued change. Reframe is a static centre/anchor crop; subject-tracking
 `server.py` is a dependency-free HTTP backend:
 
 ```
-GET  /                                  health check
+GET  /                                  liveness + info
+GET  /health  (or /healthz)             200 ok · 503 if ffmpeg missing
 POST /process?format=reel&budget=12     body = raw video bytes -> rendered MP4
 ```
 

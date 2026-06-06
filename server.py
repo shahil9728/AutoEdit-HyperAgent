@@ -1,22 +1,45 @@
 #!/usr/bin/env python3
 """Minimal HTTP backend for autoedit — the upload -> render -> download loop.
 
-  GET  /                          health check (JSON)
-  POST /process?format=reel&budget=12   body = raw video bytes
-                                  -> runs the pipeline, returns the rendered MP4
+  GET  /                                liveness + info (JSON)
+  GET  /health   (alias /healthz)       health check: 200 ok, 503 if ffmpeg missing
+  POST /process?format=reel&budget=12   body = raw video bytes -> rendered MP4
 
 Python stdlib only (no Flask needed). This is essentially the service you'd
-deploy behind the landing page. In the agent sandbox it's driven by curl on
-localhost, because the sandbox has no public inbound URL to expose it on.
+deploy behind the landing page. Render (render.yaml) and Fly (fly.toml) point
+their health checks at /health.
 """
 
+import datetime
 import json
 import os
+import shutil
 import tempfile
+import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from autoedit import run_pipeline
+from autoedit import __version__, run_pipeline
+
+START_TIME = time.time()
+
+
+def health_payload():
+    """Liveness + confirmation the critical dependency (ffmpeg) is present.
+
+    Returns (ok, payload). `ok` is False when ffmpeg is missing — the service is
+    up but can't actually render, so /health reports 503 (degraded).
+    """
+    ffmpeg = shutil.which("ffmpeg")
+    ok = ffmpeg is not None
+    return ok, {
+        "status": "ok" if ok else "degraded",
+        "service": "autoedit",
+        "version": __version__,
+        "ffmpeg": bool(ffmpeg),
+        "uptime_seconds": round(time.time() - START_TIME, 1),
+        "time": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -34,10 +57,15 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        if self.path.rstrip("/") in ("", "/"):
-            self._send(200, "application/json",
-                       json.dumps({"status": "ok", "service": "autoedit",
-                                   "endpoint": "POST /process?format=reel"}).encode())
+        path = urllib.parse.urlparse(self.path).path.rstrip("/")
+        if path == "":                            # root: liveness + quick info
+            _, payload = health_payload()
+            payload["endpoint"] = "POST /process?format=reel"
+            self._send(200, "application/json", json.dumps(payload).encode())
+        elif path in ("/health", "/healthz"):     # readiness: 503 if ffmpeg missing
+            ok, payload = health_payload()
+            self._send(200 if ok else 503, "application/json",
+                       json.dumps(payload).encode())
         else:
             self._send(404, "application/json", b'{"error":"not found"}')
 
@@ -78,5 +106,5 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8000"))
-    print(f"autoedit backend listening on :{port}", flush=True)
+    print(f"autoedit backend listening on :{port}  (health: /health)", flush=True)
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
