@@ -38,33 +38,41 @@ _NICE = ["nice", "-n", "19"] if shutil.which("nice") else []
 # low-level ffmpeg passes
 # --------------------------------------------------------------------------- #
 def _run_meta_pass(path: str, vf: str, fps: int) -> List[Dict[str, float]]:
-    """Run one analysis pass; return per-sampled-frame dicts {t, lavfi keys...}."""
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".txt")
-    tmp.close()
-    full_vf = f"fps={fps},{vf},metadata=print:file={tmp.name}"
-    cmd = ["ffmpeg", "-hide_banner", "-v", "error", "-threads", "1", "-i", path,
-           "-vf", full_vf, "-an", "-f", "null", "-"]
-    subprocess.run(_NICE + cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-    samples: List[Dict[str, float]] = []
-    cur: Dict[str, float] = None
-    with open(tmp.name) as f:
-        for line in f:
-            line = line.rstrip("\n")
-            if line.startswith("frame:"):
-                if cur is not None:
-                    samples.append(cur)
-                m = _PTS.search(line)
-                cur = {"t": float(m.group(1)) if m else 0.0}
-            elif line.startswith("lavfi.") and "=" in line and cur is not None:
-                k, v = line.split("=", 1)
-                try:
-                    cur[k.strip()] = float(v)
-                except ValueError:
-                    pass
-    if cur is not None:
-        samples.append(cur)
-    os.unlink(tmp.name)
-    return samples
+    """Run one analysis pass; return per-sampled-frame dicts {t, lavfi keys...}.
+
+    The metadata output uses a BARE filename and ffmpeg is run with cwd set to a
+    temp dir. Passing an absolute path to `metadata=print:file=` breaks on
+    Windows, where `C:\\...` is misparsed as filter option separators / escapes.
+    """
+    workdir = tempfile.mkdtemp(prefix="autoedit_meta_")
+    out_name = "meta.txt"
+    full_vf = f"fps={fps},{vf},metadata=print:file={out_name}"
+    cmd = ["ffmpeg", "-hide_banner", "-v", "error", "-threads", "1",
+           "-i", os.path.abspath(path), "-vf", full_vf, "-an", "-f", "null", "-"]
+    try:
+        subprocess.run(_NICE + cmd, check=True, cwd=workdir,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        samples: List[Dict[str, float]] = []
+        cur: Dict[str, float] = None
+        with open(os.path.join(workdir, out_name)) as f:
+            for line in f:
+                line = line.rstrip("\n")
+                if line.startswith("frame:"):
+                    if cur is not None:
+                        samples.append(cur)
+                    m = _PTS.search(line)
+                    cur = {"t": float(m.group(1)) if m else 0.0}
+                elif line.startswith("lavfi.") and "=" in line and cur is not None:
+                    k, v = line.split("=", 1)
+                    try:
+                        cur[k.strip()] = float(v)
+                    except ValueError:
+                        pass
+        if cur is not None:
+            samples.append(cur)
+        return samples
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
 
 
 def detect_shots(path: str, duration: float, threshold: float = 0.4,
