@@ -3,12 +3,16 @@
 Flow: analyze the footage ONCE (technical probe + transcript + visual metrics),
 then for each requested platform build a tailored EDL (blended selection with
 that platform's visual/speech weighting) and render it.
+
+`progress(stage)` (optional) is called as work advances so a caller (the web
+backend) can surface live sub-stages. `shots_hint` lets the caller pass known
+shot boundaries (e.g. clip cut points) to skip the costly scene-detect pass.
 """
 
 from __future__ import annotations
 
 import os
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Tuple
 
 from . import agents, visual
 from .edl import EDL
@@ -25,6 +29,8 @@ def run_pipeline(
     budget: Optional[float] = None,
     use_visual: bool = True,
     verbose: bool = True,
+    progress: Optional[Callable[[str], None]] = None,
+    shots_hint: Optional[List[Tuple[float, float]]] = None,
 ) -> List[dict]:
     os.makedirs(outdir, exist_ok=True)
     basename = os.path.splitext(os.path.basename(source))[0]
@@ -33,6 +39,10 @@ def run_pipeline(
         if verbose:
             print(msg, flush=True)
 
+    def note(stage: str) -> None:
+        if progress:
+            progress(stage)
+
     # 1. Analysis Agent --------------------------------------------------- #
     log("[1/6] Analysis     : probe + transcribe + visual metrics")
     meta = agents.probe_source(source)
@@ -40,7 +50,8 @@ def run_pipeline(
 
     shots = []
     if use_visual:
-        shots = visual.analyze(source, meta.duration)
+        note("analyzing footage (scoring shots)")
+        shots = visual.analyze(source, meta.duration, shots=shots_hint)
     log(f"        {meta.width}x{meta.height} @ {meta.fps}fps, {meta.duration:.1f}s, "
         f"audio={meta.has_audio}; {len(transcript.segments)} speech segs; {len(shots)} shots")
 
@@ -81,6 +92,7 @@ def run_pipeline(
             log(f"        {c.id:<12} {c.src_in:5.1f}->{c.src_out:4.1f}s  {c.reason}")
 
         # 5 + 6. Editing + Platform export ----------------------------------- #
+        note(f"rendering {target['name']}")
         out_path = render(edl, outdir, basename)
         results.append({"format": target["name"], "video": out_path, "edl": edl_path,
                         "duration": round(edl.total_duration(), 2),

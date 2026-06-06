@@ -9,12 +9,9 @@
   GET  /result/<job_id>?format=reel   the rendered MP4
   OPTIONS *                   CORS preflight
 
-Survival on a 512MB / 0.1-CPU box:
-  * ffmpeg runs at nice 19 so the web server always answers /health (else Render
-    restarts the instance mid-render).
-  * AUTOEDIT_THREADS=1 + downscaled outputs (presets.py) keep RAM in budget.
-  * /health is pure in-memory (cached ffmpeg lookup) so it returns instantly.
-Raise AUTOEDIT_THREADS / AUTOEDIT_OUTPUT_SCALE / AUTOEDIT_NORM_* on a bigger box.
+Small-instance survival: ffmpeg at nice 19 (keeps /health responsive),
+AUTOEDIT_THREADS=1 + downscaled outputs (RAM), 540p normalize + 320px analysis
+(speed), and time-boxed ffmpeg so a stuck step fails loudly instead of hanging.
 """
 
 import cgi
@@ -43,8 +40,9 @@ THREADS = os.environ.get("AUTOEDIT_THREADS", "1")
 NORM_W = int(os.environ.get("AUTOEDIT_NORM_WIDTH", "960"))
 NORM_H = int(os.environ.get("AUTOEDIT_NORM_HEIGHT", "540"))
 MAX_CLIP = os.environ.get("AUTOEDIT_MAX_CLIP_SECS", "120")
+FFMPEG_TIMEOUT = int(os.environ.get("AUTOEDIT_FFMPEG_TIMEOUT", "300"))
 _NICE = ["nice", "-n", "19"] if shutil.which("nice") else []
-_FFMPEG = shutil.which("ffmpeg")  # cached so /health does zero work
+_FFMPEG = shutil.which("ffmpeg")
 
 
 def log(msg):
@@ -52,7 +50,11 @@ def log(msg):
 
 
 def _run(cmd):
-    p = subprocess.run(_NICE + cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        p = subprocess.run(_NICE + cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                           text=True, timeout=FFMPEG_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"ffmpeg timed out (>{FFMPEG_TIMEOUT}s)")
     if p.returncode != 0:
         tail = "\n".join(p.stderr.strip().splitlines()[-8:])
         raise RuntimeError(f"ffmpeg failed ({p.returncode}): {tail}")
@@ -63,6 +65,16 @@ def _has_audio(path):
                                   "-show_entries", "stream=index", "-of", "csv=p=0", path],
                          stdout=subprocess.PIPE, text=True)
     return bool(out.stdout.strip())
+
+
+def _duration(path):
+    out = subprocess.run(_NICE + ["ffprobe", "-v", "quiet", "-show_entries",
+                                  "format=duration", "-of", "csv=p=0", path],
+                         stdout=subprocess.PIPE, text=True)
+    try:
+        return float(out.stdout.strip())
+    except (ValueError, AttributeError):
+        return 0.0
 
 
 def _normalize(src, out):
@@ -83,8 +95,11 @@ def _normalize(src, out):
 
 
 def _prepare_source(paths, work, stage):
+    """Return (source_path, shot_boundaries). For multiple clips we normalize +
+    concatenate, and return the clip cut points so the analyzer can skip the
+    (expensive) scene-detection pass."""
     if len(paths) == 1:
-        return paths[0]
+        return paths[0], None
     norm = []
     for i, p in enumerate(paths):
         stage(f"normalizing clip {i + 1}/{len(paths)}")
@@ -101,7 +116,12 @@ def _prepare_source(paths, work, stage):
     _run(["ffmpeg", "-y", "-threads", THREADS, *inputs, "-filter_complex", fc,
           "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "ultrafast",
           "-crf", "26", "-c:a", "aac", combined])
-    return combined
+    bounds, t = [], 0.0
+    for o in norm:
+        d = _duration(o)
+        bounds.append((round(t, 3), round(t + d, 3)))
+        t += d
+    return combined, bounds
 
 
 def _worker(job_id, paths, fmts, budget, work):
@@ -112,13 +132,13 @@ def _worker(job_id, paths, fmts, budget, work):
         log(f"[{job_id[:6]}] {s}")
 
     try:
-        source = _prepare_source(paths, work, stage)
+        source, hint = _prepare_source(paths, work, stage)
         for fmt in fmts:
-            stage(f"rendering {fmt}")
             try:
                 outdir = os.path.join(work, "out_" + fmt)
                 res = run_pipeline(source, [fmt], transcript_path=None, outdir=outdir,
-                                   budget=budget, use_visual=True, verbose=False)
+                                   budget=budget, use_visual=True, verbose=False,
+                                   progress=stage, shots_hint=hint)
                 j = res[0]
                 job["formats"][fmt].update(status="done", path=j["video"],
                                            clips=j["clips"], duration=j["duration"])
