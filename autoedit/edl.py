@@ -81,6 +81,8 @@ class Clip:
     score: float = 0.0          # final blended score used for ranking
     visual_score: float = 0.0   # from the visual-analysis pass (0..1)
     speech_score: float = 0.0   # from transcript hook analysis (0..1)
+    motion: float = 0.0         # normalised motion level of the clip (0..1)
+    effect: str = "none"        # styling effect chosen by the Effects agent
     reason: str = ""
     focus_x: float = 0.5  # 0..1 horizontal crop centre for reframing
     speed: float = 1.0

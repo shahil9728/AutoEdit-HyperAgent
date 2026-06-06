@@ -245,6 +245,49 @@ def select_blended(shots, transcript: Transcript, visual_w: float, speech_w: flo
         clips.append(Clip(
             id=f"shot@{sh['start']:.0f}s", src_in=sh["start"], src_out=sh["end"],
             score=c["blended"], visual_score=c["vis"], speech_score=c["sp"],
-            reason=c["reason"],
+            motion=sh.get("motion_norm", 0.5), reason=c["reason"],
         ))
     return clips
+
+
+# --------------------------------------------------------------------------- #
+# Effects Agent — choose a styling effect PER CLIP from its analysis, instead
+# of blindly zooming everything. Zoom is just one option; clips that are
+# already moving (or too short) are left alone.
+# --------------------------------------------------------------------------- #
+_STATIC_POOL = ["push_in", "pull_out", "pan_left", "pan_right"]
+
+
+def assign_effects(timeline, target):
+    """Pick an effect for each clip from its motion / duration / variety.
+
+    Heuristic 'understanding' using the visual-analysis motion metric:
+      * already-dynamic clips -> none (don't fight real movement)
+      * very short clips       -> none (added motion looks like jitter)
+      * static clips           -> a varied push / pull / pan to add life
+      * medium motion          -> gentle, alternating
+    Swap this for an LLM over the same metrics when you want real taste.
+    """
+    if not target.get("motion"):
+        for c in timeline:
+            c.effect = "none"
+        return timeline
+
+    prev, pi = None, 0
+    for c in timeline:
+        m = c.motion  # 0..1 normalised motion level
+        if c.duration < 1.2:
+            eff = "none"
+        elif m >= 0.6:               # already moving — leave it alone
+            eff = "none"
+        elif m <= 0.35:              # static — add life, varied
+            eff = _STATIC_POOL[pi % len(_STATIC_POOL)]
+            pi += 1
+            if eff == prev:
+                eff = _STATIC_POOL[pi % len(_STATIC_POOL)]
+                pi += 1
+        else:                        # medium — gentle, avoid repeats
+            eff = "push_in" if prev != "push_in" else "none"
+        c.effect = eff
+        prev = eff
+    return timeline

@@ -78,6 +78,8 @@ def run_pipeline(
 
         # 3. Story Agent ------------------------------------------------------ #
         timeline = agents.build_story(clips, hook_first=target["aspect"] == "9:16")
+        # 3b. Effects Agent — pick a per-clip effect from its analysis --------- #
+        timeline = agents.assign_effects(timeline, target)
         # 4. Caption Agent ---------------------------------------------------- #
         captions = agents.build_captions(timeline, transcript)
 
@@ -89,7 +91,8 @@ def run_pipeline(
         log(f"\n[+] {target['platform']:<16} {target['width']}x{target['height']}  "
             f"(visual×{vw} / speech×{sw}) | {len(timeline)} clips, {edl.total_duration():.1f}s")
         for c in timeline:
-            log(f"        {c.id:<12} {c.src_in:5.1f}->{c.src_out:4.1f}s  {c.reason}")
+            log(f"        {c.id:<12} {c.src_in:5.1f}->{c.src_out:4.1f}s  "
+                f"motion={c.motion:.2f} fx={c.effect:<9} {c.reason}")
 
         # 5 + 6. Editing + Platform export ----------------------------------- #
         note(f"rendering {target['name']}")

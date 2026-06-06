@@ -157,5 +157,6 @@ def analyze(path: str, duration: float, fps: int = 3,
             expo = max(0.0, 1.0 - abs(r["brightness"] - 110.0) / 110.0)
             vs = 0.45 * sN[i] + 0.30 * expo + 0.15 * cN[i] + 0.10 * mN[i]
             r["exposure"] = round(expo, 3)
+            r["motion_norm"] = round(mN[i], 3)   # 0..1, used to pick effects
             r["visual_score"] = round(min(1.0, max(0.0, vs)), 3)
     return rows

@@ -2,11 +2,12 @@
 
 Pipeline:
   Pass 1  cut each clip (fast -ss/-t seek) and STYLE it: reframe to target aspect,
-          add a punch-in/out zoom (Ken Burns) and a colour grade   -> seg_i.mp4
+          apply the per-clip EFFECT chosen by the Effects agent (push/pull/pan or
+          none), and a colour grade                          -> seg_i.mp4
   Pass 2  join clips — xfade transitions when there are no burned captions
-          (transitions shift timing, which would desync captions), else a plain
-          concat                                                     -> body.mp4
-  Pass 3  burn word-pop captions if any                             -> final.mp4
+          (transitions shift timing, which would desync captions), else concat
+                                                              -> body.mp4
+  Pass 3  burn word-pop captions if any                      -> final.mp4
 
 Per-clip cutting (instead of one split->trim->concat graph) avoids the ffmpeg
 split/concat deadlock and only decodes the ranges actually used.
@@ -24,7 +25,8 @@ from .edl import EDL, CaptionWord
 _THREADS = os.environ.get("AUTOEDIT_THREADS", "1")
 _TIMEOUT = int(os.environ.get("AUTOEDIT_FFMPEG_TIMEOUT", "300"))
 _NICE = ["nice", "-n", "19"] if shutil.which("nice") else []
-_ZOOM = float(os.environ.get("AUTOEDIT_ZOOM", "1.15"))  # max punch-in scale
+_ZOOM = float(os.environ.get("AUTOEDIT_ZOOM", "1.15"))       # push/pull max scale
+_PANZ = float(os.environ.get("AUTOEDIT_PAN_ZOOM", "1.12"))   # zoom held during a pan
 
 
 def _log(msg: str) -> None:
@@ -46,36 +48,41 @@ def _run(cmd: List[str], cwd: str, label: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# per-clip styling: reframe + punch zoom + grade
+# per-clip styling: reframe + chosen effect + grade
 # --------------------------------------------------------------------------- #
-def _video_chain(target: dict, focus: float, idx: int, dur: float) -> str:
+def _video_chain(target: dict, focus: float, effect: str, dur: float) -> str:
     w, h, fps = target["width"], target["height"], target["fps"]
     ar = w / h
     cropw = f"floor(min(iw\\,ih*{ar:.6f})/2)*2"
     x = f"(iw-{cropw})*{focus}"
     parts = [f"crop={cropw}:ih:{x}:0", f"scale={w}:{h}", "setsar=1", f"fps={fps}", "format=yuv420p"]
 
-    if target.get("motion"):
+    if effect and effect != "none":
         frames = max(1, int(round(dur * fps)))
+        cx, cy = "iw/2-(iw/zoom/2)", "ih/2-(ih/zoom/2)"
         speed = (_ZOOM - 1.0) / frames
-        if idx % 2 == 0:                                   # alternate in / out
-            z = f"min(1+{speed:.6f}*on,{_ZOOM})"           # punch IN
-        else:
-            z = f"max({_ZOOM}-{speed:.6f}*on,1.0)"         # ease OUT
-        parts.append(f"zoompan=z='{z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
-                     f"d=1:s={w}x{h}:fps={fps}")
+        zp = None
+        if effect == "push_in":
+            zp = f"zoompan=z='min(1+{speed:.6f}*on,{_ZOOM})':x='{cx}':y='{cy}':d=1:s={w}x{h}:fps={fps}"
+        elif effect == "pull_out":
+            zp = f"zoompan=z='max({_ZOOM}-{speed:.6f}*on,1.0)':x='{cx}':y='{cy}':d=1:s={w}x{h}:fps={fps}"
+        elif effect == "pan_left":
+            zp = f"zoompan=z='{_PANZ}':x='(iw-iw/zoom)*on/{frames}':y='{cy}':d=1:s={w}x{h}:fps={fps}"
+        elif effect == "pan_right":
+            zp = f"zoompan=z='{_PANZ}':x='(iw-iw/zoom)*(1-on/{frames})':y='{cy}':d=1:s={w}x{h}:fps={fps}"
+        if zp:
+            parts.append(zp)
 
     if target.get("grade"):
-        parts.append("eq=contrast=1.06:saturation=1.12:gamma=0.98")
-        parts.append("vignette=PI/6")
+        parts += ["eq=contrast=1.06:saturation=1.12:gamma=0.98", "vignette=PI/6"]
 
     return ",".join(parts)
 
 
-def _segment_cmd(edl: EDL, clip, idx: int, out_name: str) -> List[str]:
+def _segment_cmd(edl: EDL, clip, out_name: str) -> List[str]:
     src = os.path.abspath(edl.source.path)
     dur = max(0.05, clip.src_out - clip.src_in)
-    vchain = _video_chain(edl.target, clip.focus_x, idx, dur)
+    vchain = _video_chain(edl.target, clip.focus_x, clip.effect, dur)
     cmd = ["ffmpeg", "-y", "-nostdin", "-threads", _THREADS,
            "-ss", f"{clip.src_in:.3f}", "-i", src, "-t", f"{dur:.3f}"]
     if edl.source.has_audio:
@@ -250,8 +257,8 @@ def render(edl: EDL, workdir: str, basename: str) -> str:
     segs, durs = [], []
     for i, clip in enumerate(edl.timeline):
         seg = f"{basename}_{tag}_seg{i}.mp4"
-        _run(_segment_cmd(edl, clip, i, seg), workdir,
-             f"cut+style {i + 1}/{n} ({clip.src_in:.1f}-{clip.src_out:.1f}s)")
+        _run(_segment_cmd(edl, clip, seg), workdir,
+             f"cut+style {i + 1}/{n} fx={clip.effect} ({clip.src_in:.1f}-{clip.src_out:.1f}s)")
         segs.append(seg)
         durs.append(max(0.05, clip.src_out - clip.src_in))
 
