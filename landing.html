@@ -23,10 +23,10 @@
   .sdot.bad{background:var(--bad);box-shadow:0 0 0 3px rgba(248,113,113,.15)}
   .sdot.wait{background:var(--accent2);animation:pulse 1s infinite}
   @keyframes pulse{50%{opacity:.35}}
-  .hero{text-align:center;padding:24px 0 28px}
+  .hero{text-align:center;padding:24px 0 26px}
   .hero h1{font-family:'Space Grotesk';font-weight:700;font-size:clamp(2rem,5.4vw,3.1rem);line-height:1.05;letter-spacing:-.015em}
   .hero h1 .g{background:linear-gradient(100deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-  .hero p{color:var(--muted);font-size:1.05rem;margin-top:13px;max-width:56ch;margin-inline:auto}
+  .hero p{color:var(--muted);font-size:1.05rem;margin-top:12px;max-width:56ch;margin-inline:auto}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:23px;margin-bottom:17px;box-shadow:0 24px 60px -30px rgba(0,0,0,.7)}
   .step{display:flex;align-items:center;gap:11px;margin-bottom:14px}
   .step .num{width:25px;height:25px;border-radius:8px;background:var(--panel2);border:1px solid var(--line2);display:grid;place-items:center;font-family:'Space Grotesk';font-weight:700;font-size:.82rem;color:var(--accent2)}
@@ -34,23 +34,20 @@
   .step .opt{margin-left:auto;font-size:.8rem;color:var(--muted)}
   .drop{border:2px dashed var(--line2);border-radius:15px;padding:26px 20px;text-align:center;cursor:pointer;transition:.18s;background:#0e121b}
   .drop:hover,.drop.over{border-color:var(--accent);background:rgba(124,92,255,.06)}
-  .drop .big{font-size:1.9rem}
-  .drop b{font-family:'Space Grotesk';font-weight:600;display:block;margin-top:7px}
+  .drop .big{font-size:1.9rem}.drop b{font-family:'Space Grotesk';font-weight:600;display:block;margin-top:7px}
   .drop span{color:var(--muted);font-size:.85rem}
   .files{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px;margin-top:14px}
   .files:empty{display:none}
   .fileChip{position:relative;background:#0e121b;border:1px solid var(--line);border-radius:11px;overflow:hidden}
   .fileChip video{width:100%;height:84px;object-fit:cover;background:#05070c;display:block}
-  .fileChip .meta{padding:8px 9px}
-  .fileChip .nm{font-size:.78rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fileChip .meta{padding:8px 9px}.fileChip .nm{font-size:.78rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .fileChip .sz{font-size:.7rem;color:var(--muted);margin-top:2px}
   .fileChip .idx{position:absolute;top:6px;left:6px;font-size:.62rem;font-weight:700;background:rgba(8,10,16,.8);color:var(--accent2);padding:2px 6px;border-radius:5px}
   .fileChip .x{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(8,10,16,.78);color:#fff;cursor:pointer;font-size:.85rem;display:grid;place-items:center}
   .fileChip .x:hover{background:#e5484d}
   .opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px}
   .fmt{background:#0e121b;border:1px solid var(--line);border-radius:13px;padding:13px;cursor:pointer;transition:.15s;user-select:none}
-  .fmt:hover{border-color:var(--line2)}
-  .fmt.sel{border-color:var(--accent);background:rgba(124,92,255,.10);box-shadow:0 0 0 1px var(--accent) inset}
+  .fmt:hover{border-color:var(--line2)}.fmt.sel{border-color:var(--accent);background:rgba(124,92,255,.10);box-shadow:0 0 0 1px var(--accent) inset}
   .fmt .ic{font-size:1.25rem}.fmt .nm{font-family:'Space Grotesk';font-weight:600;font-size:.93rem;margin-top:6px}
   .fmt .ar{font-size:.72rem;color:var(--muted);margin-top:3px}.fmt.sel .ar{color:var(--accent2)}
   .ctl label{font-size:.8rem;color:var(--muted);display:block;margin-bottom:7px}
@@ -58,16 +55,19 @@
   .note{font-size:.8rem;color:var(--muted);margin-top:12px;border-left:2px solid var(--line2);padding-left:11px}
   .exec{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px}
   .go{font-family:'Space Grotesk';font-weight:700;font-size:1.05rem;color:#fff;border:none;cursor:pointer;padding:15px 34px;border-radius:13px;background:linear-gradient(120deg,var(--accent),var(--accent2));transition:.18s;box-shadow:0 14px 34px -12px rgba(124,92,255,.7)}
-  .go:hover{filter:brightness(1.08);transform:translateY(-1px)}
-  .go:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;transform:none;filter:none}
+  .go:hover{filter:brightness(1.08);transform:translateY(-1px)}.go:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;transform:none;filter:none}
   .hint{color:var(--muted);font-size:.85rem}
   #run{display:none}#run.show{display:block;animation:fade .35s ease}
   @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  #uploadwrap{display:none;margin-bottom:14px}
+  #uploadwrap.show{display:block}
+  .bar{height:10px;background:#0e121b;border:1px solid var(--line);border-radius:20px;overflow:hidden}
+  .bar > div{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .2s}
+  #uploadtext{font-size:.8rem;color:var(--muted);margin-top:6px;font-family:ui-monospace,monospace}
   .log{background:#07090e;border:1px solid var(--line);border-radius:12px;padding:12px 14px;
-    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;line-height:1.65;max-height:210px;overflow:auto;margin-bottom:16px}
-  .lline{white-space:pre-wrap;word-break:break-word;color:#c6cde0}
-  .lt{color:#5d6680;margin-right:8px}
-  .lline.ok{color:var(--good)}.lline.bad{color:var(--bad)}
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;line-height:1.65;max-height:220px;overflow:auto;margin-bottom:16px}
+  .lline{white-space:pre-wrap;word-break:break-word;color:#c6cde0}.lt{color:#5d6680;margin-right:8px}
+  .lline.ok{color:var(--good)}.lline.bad{color:var(--bad)}.lline.dim{color:#7b8499}
   .results{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
   .res{background:#0e121b;border:1px solid var(--line);border-radius:14px;overflow:hidden}
   .res .head{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;border-bottom:1px solid var(--line)}
@@ -92,7 +92,7 @@
   </nav>
   <div class="hero">
     <h1>Upload raw footage.<br><span class="g">Get finished videos.</span></h1>
-    <p>Drop in your clips — they're combined into one edit, then cut, reframed and scored on your backend.</p>
+    <p>Drop in 3–4 clips — they're combined, the AI finds the best moments, and you get a finished edit.</p>
   </div>
 
   <div class="card">
@@ -101,7 +101,8 @@
       <span>or click to browse (MP4, MOV, WebM). All clips are combined, in order.</span></div>
     <input type="file" id="fileInput" accept="video/*" multiple hidden>
     <div class="files" id="files"></div>
-    <div class="note">Tip: for a quick first test, use short clips (a few seconds each). Big phone videos take longer to upload + render on the free tier.</div>
+    <div class="note">On the free server, keep clips short (a few seconds each) for a fast first test —
+      big phone videos (100 MB+) upload slowly and can exceed the free tier's memory.</div>
   </div>
 
   <div class="card">
@@ -120,11 +121,12 @@
 
   <div class="card" id="run" style="margin-top:22px">
     <div class="step"><span class="num">▶</span><h2 id="runTitle">Working…</h2></div>
+    <div id="uploadwrap"><div class="bar"><div id="uploadbar"></div></div><div id="uploadtext"></div></div>
     <div class="log" id="log"></div>
     <div class="results" id="results"></div>
   </div>
 
-  <div class="footnote">Backend: <span id="burl"></span> · UI build 3</div>
+  <div class="footnote">Backend: <span id="burl"></span> · UI build 4</div>
 </div>
 
 <script>
@@ -134,6 +136,8 @@
       || "https://autoedit-backend.onrender.com").replace(/\/+$/, "");
   var $ = function(id){ return document.getElementById(id); };
   $("burl").textContent = BACKEND_URL;
+  var sleep = function(ms){ return new Promise(function(r){ setTimeout(r, ms); }); };
+  var mb = function(b){ return (b/1048576).toFixed(1)+" MB"; };
 
   var FORMATS = {
     reel:{nm:"Instagram Reel",ic:"📸",ar:"9:16"}, short:{nm:"YouTube Short",ic:"▶️",ar:"9:16"},
@@ -141,14 +145,13 @@
     travel:{nm:"Travel Montage",ic:"🌍",ar:"16:9"}, square:{nm:"Square (1:1)",ic:"◼️",ar:"1:1"}
   };
   var state = { files:[], formats:new Set(["reel"]) };
+  var cards = {};
 
   function setStatus(cls, txt){ $("sdot").className="sdot "+cls; $("stext").textContent=txt; }
-  (function ping(){
-    setStatus("wait","checking backend…");
+  (function ping(){ setStatus("wait","checking backend…");
     fetch(BACKEND_URL+"/health",{cache:"no-store"})
       .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
-      .then(function(o){ if(o.ok&&o.j.status==="ok") setStatus("ok","backend online · v"+o.j.version);
-                         else setStatus("bad","backend degraded"); })
+      .then(function(o){ setStatus(o.ok&&o.j.status==="ok"?"ok":"bad", o.ok?("backend online · v"+o.j.version):"backend degraded"); })
       .catch(function(){ setStatus("bad","backend unreachable"); });
   })();
 
@@ -181,60 +184,90 @@
     $("hint").textContent = ok ? state.files.length+" clip(s) → "+state.formats.size+" format(s)" : (state.files.length===0?"Add a clip.":"Pick a format."); }
   refresh();
 
-  // ---- logging ----
   function logLine(msg, cls){ var el=document.createElement("div"); el.className="lline"+(cls?" "+cls:"");
-    var t=new Date().toTimeString().slice(0,8);
-    el.innerHTML='<span class="lt">'+t+'</span>'+msg.replace(/</g,"&lt;"); var box=$("log"); box.appendChild(el); box.scrollTop=box.scrollHeight; }
-
-  // ---- execute ----
-  $("go").onclick = async function(){
-    try{
-      if(state.files.length===0||state.formats.size===0) return;
-      var budget=$("len").value, formats=Array.from(state.formats);
-      if(!formats.length) formats=["reel"];   // safety net
-      $("run").classList.add("show"); $("runTitle").textContent="Working…";
-      $("log").innerHTML=""; $("results").innerHTML="";
-      $("run").scrollIntoView({behavior:"smooth",block:"start"});
-      logLine("Start: "+state.files.length+" clip(s), formats=["+formats.join(", ")+"], budget="+budget+"s");
-
-      logLine("Checking backend at "+BACKEND_URL+" …");
-      try{ var h=await fetch(BACKEND_URL+"/health",{cache:"no-store"}); var hj=await h.json();
-        logLine("Backend "+hj.status+" — v"+hj.version+", ffmpeg="+hj.ffmpeg, h.ok?"ok":"bad"); }
-      catch(e){ logLine("Backend unreachable. Is it deployed and awake? Open "+BACKEND_URL+"/health","bad"); throw new Error("backend unreachable"); }
-
-      for(var i=0;i<formats.length;i++){ await processFormat(formats[i], budget); }
-      $("runTitle").textContent="✓ Finished"; logLine("All formats finished.","ok");
-    }catch(err){ $("runTitle").textContent="⚠ Stopped"; logLine("Stopped: "+(err&&err.message||err),"bad"); }
-  };
+    el.innerHTML='<span class="lt">'+new Date().toTimeString().slice(0,8)+'</span>'+String(msg).replace(/</g,"&lt;");
+    var box=$("log"); box.appendChild(el); box.scrollTop=box.scrollHeight; }
+  function showUpload(pct, txt){ $("uploadwrap").classList.add("show"); $("uploadbar").style.width=pct+"%"; $("uploadtext").textContent=txt; }
+  function hideUpload(){ $("uploadwrap").classList.remove("show"); }
 
   function makeCard(fmt){ var f=FORMATS[fmt], el=document.createElement("div"); el.className="res";
     el.innerHTML='<div class="head"><span class="rn">'+f.nm+'</span><span class="ar">'+f.ar+'</span></div>'+
-      '<div class="body"><div><div class="spin"></div><div class="stat">queued…</div></div></div>';
-    $("results").appendChild(el); return el; }
+      '<div class="body"><div><div class="spin"></div><div class="stat">waiting…</div></div></div>';
+    $("results").appendChild(el); cards[fmt]=el; return el; }
+  function cardStat(fmt, txt){ var c=cards[fmt]; if(!c) return; var s=c.querySelector(".stat"); if(s) s.textContent=txt; }
+  function cardError(fmt, msg){ var c=cards[fmt]; if(!c) return; c.querySelector(".body").innerHTML='<div class="err">⚠ '+String(msg).replace(/</g,"&lt;")+'</div>'; }
+  function cardVideo(fmt, url, e, size){ var c=cards[fmt]; if(!c) return;
+    c.querySelector(".body").innerHTML='<video controls playsinline src="'+url+'"></video>';
+    var foot=document.createElement("div"); foot.className="foot";
+    var clips=(e.clips&&e.clips.length)?e.clips.length+" clips · ":"";
+    foot.innerHTML='<span class="meta">'+(e.duration?e.duration+'s · ':'')+clips+(size/1e6).toFixed(1)+' MB</span>'+
+      '<a class="dl" download="'+fmt+'.mp4" href="'+url+'">Download</a>'; c.appendChild(foot); }
 
-  async function processFormat(fmt, budget){
-    var card=makeCard(fmt), body=card.querySelector(".body");
-    var fd=new FormData(); state.files.forEach(function(f){ fd.append("files", f, f.name); });
-    var mb=(state.files.reduce(function(s,f){return s+f.size;},0)/1e6).toFixed(1);
-    body.innerHTML='<div><div class="spin"></div><div class="stat">uploading '+mb+' MB…</div></div>';
-    logLine("["+fmt+"] uploading "+state.files.length+" clip(s), "+mb+" MB (first run may wake the server, ~30–60s)…");
-    var t0=Date.now();
+  $("go").onclick = async function(){
     try{
-      var res=await fetch(BACKEND_URL+"/process?format="+encodeURIComponent(fmt)+"&budget="+encodeURIComponent(budget),{method:"POST",body:fd});
-      if(!res.ok){ var txt=await res.text(); throw new Error("HTTP "+res.status+" — "+txt.slice(0,180)); }
-      logLine("["+fmt+"] server returned 200, downloading video…");
-      var clips=res.headers.get("X-Clips")||"", dur=res.headers.get("X-Duration")||"", srcs=res.headers.get("X-Sources")||"";
-      var blob=await res.blob(), url=URL.createObjectURL(blob), secs=((Date.now()-t0)/1000).toFixed(1);
-      body.innerHTML='<video controls playsinline src="'+url+'"></video>';
-      var foot=document.createElement("div"); foot.className="foot";
-      foot.innerHTML='<span class="meta">'+(dur?dur+'s · ':'')+(clips?clips.split(",").length+' clips · ':'')+(srcs?srcs+' src · ':'')+(blob.size/1e6).toFixed(1)+' MB</span>'+
-        '<a class="dl" download="'+fmt+'.mp4" href="'+url+'">Download</a>';
-      card.appendChild(foot);
-      logLine("["+fmt+"] ✓ done in "+secs+"s — "+(dur?dur+"s, ":"")+(clips?clips.split(",").length+" clips":"")+", "+(blob.size/1e6).toFixed(1)+" MB","ok");
-    }catch(e){
-      body.innerHTML='<div class="err">⚠ '+(e&&e.message||"failed")+'</div>';
-      logLine("["+fmt+"] ✗ FAILED: "+(e&&e.message||e),"bad");
+      if(state.files.length===0||state.formats.size===0) return;
+      var budget=$("len").value, formats=Array.from(state.formats); if(!formats.length) formats=["reel"];
+      $("run").classList.add("show"); $("runTitle").textContent="Working…";
+      $("log").innerHTML=""; $("results").innerHTML=""; cards={}; hideUpload();
+      $("run").scrollIntoView({behavior:"smooth",block:"start"});
+      formats.forEach(makeCard);
+      logLine("Start: "+state.files.length+" clip(s), formats=["+formats.join(", ")+"], budget="+budget+"s");
+
+      logLine("Checking backend…");
+      try{ var h=await fetch(BACKEND_URL+"/health",{cache:"no-store"}); var hj=await h.json();
+        logLine("Backend "+hj.status+" — v"+hj.version+", ffmpeg="+hj.ffmpeg, h.ok?"ok":"bad"); }
+      catch(e){ logLine("Backend unreachable — is it awake? "+BACKEND_URL+"/health","bad"); throw new Error("backend unreachable"); }
+
+      var jobId = await uploadAll(formats, budget);
+      logLine("Uploaded ✓ — job "+jobId.slice(0,8)+" queued on the server","ok");
+      await pollJob(jobId, formats);
+      $("runTitle").textContent="✓ Finished";
+    }catch(err){ $("runTitle").textContent="⚠ Stopped"; logLine("Stopped: "+(err&&err.message||err),"bad"); hideUpload(); }
+  };
+
+  function uploadAll(formats, budget){
+    return new Promise(function(resolve, reject){
+      var fd=new FormData(); state.files.forEach(function(f){ fd.append("files", f, f.name); });
+      var total=state.files.reduce(function(s,f){return s+f.size;},0);
+      var xhr=new XMLHttpRequest();
+      xhr.open("POST", BACKEND_URL+"/process?formats="+encodeURIComponent(formats.join(","))+"&budget="+encodeURIComponent(budget));
+      showUpload(0,"connecting… (first run may wake the server, ~30–60s)");
+      logLine("Uploading "+state.files.length+" clip(s), "+mb(total)+"…");
+      xhr.upload.onprogress=function(ev){ if(ev.lengthComputable){ var pct=ev.loaded/ev.total*100;
+        showUpload(pct, "uploading "+pct.toFixed(0)+"%  ("+mb(ev.loaded)+" / "+mb(ev.total)+")"); } };
+      xhr.upload.onload=function(){ showUpload(100,"upload complete · server is queuing the job…"); };
+      xhr.onload=function(){ if(xhr.status===202){ hideUpload(); try{ resolve(JSON.parse(xhr.responseText).job_id); }catch(e){ reject(new Error("bad job response")); } }
+        else { reject(new Error("HTTP "+xhr.status+" — "+String(xhr.responseText).slice(0,160))); } };
+      xhr.onerror=function(){ reject(new Error("network error during upload (server asleep, offline, or blocked)")); };
+      xhr.send(fd);
+    });
+  }
+
+  async function pollJob(jobId, formats){
+    var lastStage="", fetched={}, misses=0;
+    while(true){
+      await sleep(2000);
+      var j;
+      try{ var r=await fetch(BACKEND_URL+"/status/"+jobId,{cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status); j=await r.json(); misses=0; }
+      catch(e){ misses++; logLine("(status check retry "+misses+"…)","dim"); if(misses>10) throw new Error("lost contact with server"); continue; }
+      if(j.stage && j.stage!==lastStage){ lastStage=j.stage; logLine("server: "+j.stage); }
+      formats.forEach(function(fmt){ if(!fetched[fmt]) cardStat(fmt, j.stage||"working…"); });
+      for(var i=0;i<formats.length;i++){ var fmt=formats[i]; var e=j.formats&&j.formats[fmt];
+        if(e&&e.status==="done"&&!fetched[fmt]){ fetched[fmt]=true; await fetchResult(jobId, fmt, e); }
+        else if(e&&e.status==="error"&&!fetched[fmt]){ fetched[fmt]=true; cardError(fmt, e.error||"render failed"); logLine("["+fmt+"] ✗ "+(e.error||"failed"),"bad"); }
+      }
+      if(j.status==="done"||j.status==="error"){
+        if(j.status==="error"){ logLine("Job failed: "+(j.error||"unknown"),"bad"); formats.forEach(function(fmt){ if(!fetched[fmt]) cardError(fmt, j.error||"job failed"); }); }
+        return;
+      }
     }
+  }
+
+  async function fetchResult(jobId, fmt, e){
+    logLine("["+fmt+"] ✓ rendered — "+(e.duration?e.duration+"s, ":"")+((e.clips&&e.clips.length)?e.clips.length+" clips":"")+"; downloading…","ok");
+    try{ var r=await fetch(BACKEND_URL+"/result/"+jobId+"?format="+encodeURIComponent(fmt)); if(!r.ok) throw new Error("result HTTP "+r.status);
+      var blob=await r.blob(); cardVideo(fmt, URL.createObjectURL(blob), e, blob.size); }
+    catch(err){ cardError(fmt, err.message); logLine("["+fmt+"] download failed: "+err.message,"bad"); }
   }
 })();
 </script>
