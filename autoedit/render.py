@@ -1,16 +1,15 @@
-"""The Editing + Platform agents: turn an EDL into a rendered MP4 via ffmpeg.
+"""The Editing + Style agents: turn an EDL into a polished MP4 via ffmpeg.
 
-Approach (robust + fast):
-  Pass 1  cut each selected clip to its own file using fast input-seeking
-          (-ss/-t), reframing to the target aspect          -> seg0.mp4, seg1...
-  Pass 2  concat the segment files                          -> body.mp4
-  Pass 3  burn word-pop captions (if any)                   -> final.mp4
+Pipeline:
+  Pass 1  cut each clip (fast -ss/-t seek) and STYLE it: reframe to target aspect,
+          add a punch-in/out zoom (Ken Burns) and a colour grade   -> seg_i.mp4
+  Pass 2  join clips — xfade transitions when there are no burned captions
+          (transitions shift timing, which would desync captions), else a plain
+          concat                                                     -> body.mp4
+  Pass 3  burn word-pop captions if any                             -> final.mp4
 
-Why per-segment files instead of one `split -> trim -> concat` graph: that graph
-*deadlocks* ffmpeg once the source has enough frames (split must feed every
-branch while concat consumes them in order, so later branches' buffers fill and
-the decode stalls). Cutting each segment independently avoids that entirely and
-only decodes the ranges we actually use.
+Per-clip cutting (instead of one split->trim->concat graph) avoids the ffmpeg
+split/concat deadlock and only decodes the ranges actually used.
 """
 
 from __future__ import annotations
@@ -25,6 +24,7 @@ from .edl import EDL, CaptionWord
 _THREADS = os.environ.get("AUTOEDIT_THREADS", "1")
 _TIMEOUT = int(os.environ.get("AUTOEDIT_FFMPEG_TIMEOUT", "300"))
 _NICE = ["nice", "-n", "19"] if shutil.which("nice") else []
+_ZOOM = float(os.environ.get("AUTOEDIT_ZOOM", "1.15"))  # max punch-in scale
 
 
 def _log(msg: str) -> None:
@@ -32,7 +32,7 @@ def _log(msg: str) -> None:
 
 
 def _run(cmd: List[str], cwd: str, label: str) -> None:
-    _log(f"{label}: ffmpeg {' '.join(cmd[:16])} …")
+    _log(f"{label}: ffmpeg {' '.join(cmd[:14])} …")
     try:
         proc = subprocess.run(_NICE + cmd, cwd=cwd, stdin=subprocess.DEVNULL,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -46,34 +46,58 @@ def _run(cmd: List[str], cwd: str, label: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# reframe
+# per-clip styling: reframe + punch zoom + grade
 # --------------------------------------------------------------------------- #
-def _reframe_chain(target: dict) -> str:
-    w, h = target["width"], target["height"]
+def _video_chain(target: dict, focus: float, idx: int, dur: float) -> str:
+    w, h, fps = target["width"], target["height"], target["fps"]
     ar = w / h
     cropw = f"floor(min(iw\\,ih*{ar:.6f})/2)*2"
-    x = f"(iw-{cropw})*{{focus}}"
-    return (f"crop={cropw}:ih:{x}:0,"
-            f"scale={w}:{h}:force_original_aspect_ratio=disable,"
-            f"setsar=1,fps={target['fps']},format=yuv420p")
+    x = f"(iw-{cropw})*{focus}"
+    parts = [f"crop={cropw}:ih:{x}:0", f"scale={w}:{h}", "setsar=1", f"fps={fps}", "format=yuv420p"]
+
+    if target.get("motion"):
+        frames = max(1, int(round(dur * fps)))
+        speed = (_ZOOM - 1.0) / frames
+        if idx % 2 == 0:                                   # alternate in / out
+            z = f"min(1+{speed:.6f}*on,{_ZOOM})"           # punch IN
+        else:
+            z = f"max({_ZOOM}-{speed:.6f}*on,1.0)"         # ease OUT
+        parts.append(f"zoompan=z='{z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
+                     f"d=1:s={w}x{h}:fps={fps}")
+
+    if target.get("grade"):
+        parts.append("eq=contrast=1.06:saturation=1.12:gamma=0.98")
+        parts.append("vignette=PI/6")
+
+    return ",".join(parts)
 
 
-def _segment_cmd(edl: EDL, clip, chain_tpl: str, out_name: str) -> List[str]:
+def _segment_cmd(edl: EDL, clip, idx: int, out_name: str) -> List[str]:
     src = os.path.abspath(edl.source.path)
-    chain = chain_tpl.format(focus=clip.focus_x)
     dur = max(0.05, clip.src_out - clip.src_in)
-    # -ss before -i = fast seek; -t = duration. Decodes only this range.
+    vchain = _video_chain(edl.target, clip.focus_x, idx, dur)
     cmd = ["ffmpeg", "-y", "-nostdin", "-threads", _THREADS,
            "-ss", f"{clip.src_in:.3f}", "-i", src, "-t", f"{dur:.3f}"]
     if edl.source.has_audio:
-        fc = f"[0:v]{chain}[v];[0:a]aresample=44100,aformat=channel_layouts=stereo[a]"
+        fc = f"[0:v]{vchain}[v];[0:a]aresample=44100,aformat=channel_layouts=stereo[a]"
         cmd += ["-filter_complex", fc, "-map", "[v]", "-map", "[a]",
                 "-c:a", "aac", "-ar", "44100", "-ac", "2"]
     else:
-        cmd += ["-filter_complex", f"[0:v]{chain}[v]", "-map", "[v]"]
+        cmd += ["-filter_complex", f"[0:v]{vchain}[v]", "-map", "[v]"]
     cmd += ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "22",
             "-pix_fmt", "yuv420p", out_name]
     return cmd
+
+
+# --------------------------------------------------------------------------- #
+# joining clips
+# --------------------------------------------------------------------------- #
+def _trans_dur(durs: List[float]) -> float:
+    m = min(durs) if durs else 1.0
+    d = min(0.5, m * 0.4)
+    if d >= m:
+        d = m * 0.3
+    return round(max(0.2, min(d, m - 0.05)), 3)
 
 
 def _concat_cmd(edl: EDL, segs: List[str], body_name: str) -> List[str]:
@@ -83,19 +107,50 @@ def _concat_cmd(edl: EDL, segs: List[str], body_name: str) -> List[str]:
         inputs += ["-i", s]
     if edl.source.has_audio:
         streams = "".join(f"[{i}:v][{i}:a]" for i in range(n))
-        fc = f"{streams}concat=n={n}:v=1:a=1[v][a]"
-        maps = ["-map", "[v]", "-map", "[a]", "-c:a", "aac"]
+        fc, maps = f"{streams}concat=n={n}:v=1:a=1[v][a]", ["-map", "[v]", "-map", "[a]", "-c:a", "aac"]
     else:
         streams = "".join(f"[{i}:v]" for i in range(n))
-        fc = f"{streams}concat=n={n}:v=1:a=0[v]"
-        maps = ["-map", "[v]"]
-    return (["ffmpeg", "-y", "-nostdin", "-threads", _THREADS, *inputs,
-             "-filter_complex", fc, *maps, "-c:v", "libx264", "-preset", "ultrafast",
-             "-crf", "22", "-pix_fmt", "yuv420p", "-movflags", "+faststart", body_name])
+        fc, maps = f"{streams}concat=n={n}:v=1:a=0[v]", ["-map", "[v]"]
+    return ["ffmpeg", "-y", "-nostdin", "-threads", _THREADS, *inputs, "-filter_complex", fc,
+            *maps, "-c:v", "libx264", "-preset", "ultrafast", "-crf", "22",
+            "-pix_fmt", "yuv420p", "-movflags", "+faststart", body_name]
+
+
+def _xfade_cmd(edl: EDL, segs: List[str], durs: List[float], body_name: str) -> List[str]:
+    n = len(segs)
+    d = _trans_dur(durs)
+    trans = edl.target.get("transitions") or ["fade"]
+    inputs: List[str] = []
+    for s in segs:
+        inputs += ["-i", s]
+
+    vparts, prev, cum = [], "[0:v]", 0.0
+    for k in range(1, n):
+        cum += durs[k - 1]
+        offset = cum - k * d
+        t = trans[(k - 1) % len(trans)]
+        out = "[vout]" if k == n - 1 else f"[vx{k}]"
+        vparts.append(f"{prev}[{k}:v]xfade=transition={t}:duration={d}:offset={offset:.3f}{out}")
+        prev = out
+    fc = ";".join(vparts)
+    maps = ["-map", "[vout]"]
+
+    if edl.source.has_audio:
+        aparts, aprev = [], "[0:a]"
+        for k in range(1, n):
+            aout = "[aout]" if k == n - 1 else f"[ax{k}]"
+            aparts.append(f"{aprev}[{k}:a]acrossfade=d={d}{aout}")
+            aprev = aout
+        fc += ";" + ";".join(aparts)
+        maps += ["-map", "[aout]", "-c:a", "aac"]
+
+    return ["ffmpeg", "-y", "-nostdin", "-threads", _THREADS, *inputs, "-filter_complex", fc,
+            *maps, "-c:v", "libx264", "-preset", "ultrafast", "-crf", "22",
+            "-pix_fmt", "yuv420p", "-movflags", "+faststart", body_name]
 
 
 # --------------------------------------------------------------------------- #
-# captions (ASS with TikTok-style active-word highlight)
+# captions (ASS, TikTok-style active-word highlight)
 # --------------------------------------------------------------------------- #
 def _ass_time(t: float) -> str:
     if t < 0:
@@ -148,12 +203,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     HILITE = r"{\c&H0000FFFF&\b1\fscx108\fscy108}"
     RESET = r"{\r}"
     lines: List[str] = []
-
     if style == "none":
         with open(ass_path, "w") as f:
             f.write(header)
         return
-
     for phrase in _group_phrases(edl.captions):
         upper = [w.text.upper().replace("{", "(").replace("}", ")") for w in phrase]
         for j, w in enumerate(phrase):
@@ -162,19 +215,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             if end <= start:
                 end = start + 0.25
             if style == "wordpop":
-                rendered = " ".join(
-                    (HILITE + tok + RESET) if k == j else tok
-                    for k, tok in enumerate(upper)
-                )
+                rendered = " ".join((HILITE + tok + RESET) if k == j else tok
+                                    for k, tok in enumerate(upper))
             else:
                 rendered = " ".join(upper)
                 if j > 0:
                     continue
                 end = phrase[-1].end + 0.08
-            lines.append(
-                f"Dialogue: 0,{_ass_time(start)},{_ass_time(end)},Base,,0,0,0,,{rendered}"
-            )
-
+            lines.append(f"Dialogue: 0,{_ass_time(start)},{_ass_time(end)},Base,,0,0,0,,{rendered}")
     with open(ass_path, "w") as f:
         f.write(header + "\n".join(lines) + "\n")
 
@@ -199,18 +247,22 @@ def render(edl: EDL, workdir: str, basename: str) -> str:
     final = f"{basename}_{tag}.mp4"
     n = len(edl.timeline)
 
-    chain_tpl = _reframe_chain(edl.target)
-    segs: List[str] = []
+    segs, durs = [], []
     for i, clip in enumerate(edl.timeline):
         seg = f"{basename}_{tag}_seg{i}.mp4"
-        _run(_segment_cmd(edl, clip, chain_tpl, seg), workdir,
-             f"cut {i + 1}/{n} ({clip.src_in:.1f}-{clip.src_out:.1f}s)")
+        _run(_segment_cmd(edl, clip, i, seg), workdir,
+             f"cut+style {i + 1}/{n} ({clip.src_in:.1f}-{clip.src_out:.1f}s)")
         segs.append(seg)
+        durs.append(max(0.05, clip.src_out - clip.src_in))
 
-    if len(segs) == 1:
+    use_xfade = n > 1 and (edl.target.get("transitions") or []) and not edl.captions
+    if n == 1:
         os.replace(os.path.join(workdir, segs[0]), os.path.join(workdir, body))
+    elif use_xfade:
+        _run(_xfade_cmd(edl, segs, durs, body), workdir, f"transitions ({n} clips)")
     else:
-        _run(_concat_cmd(edl, segs, body), workdir, f"concat {n} segments")
+        _run(_concat_cmd(edl, segs, body), workdir, f"concat ({n} clips)")
+    if n > 1:
         for s in segs:
             try:
                 os.remove(os.path.join(workdir, s))
