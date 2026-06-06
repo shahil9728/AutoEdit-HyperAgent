@@ -124,7 +124,7 @@
     <div class="results" id="results"></div>
   </div>
 
-  <div class="footnote">Backend: <span id="burl"></span></div>
+  <div class="footnote">Backend: <span id="burl"></span> · UI build 3</div>
 </div>
 
 <script>
@@ -190,7 +190,8 @@
   $("go").onclick = async function(){
     try{
       if(state.files.length===0||state.formats.size===0) return;
-      var budget=$("len").value, formats=Array.prototype.slice.call(state.formats);
+      var budget=$("len").value, formats=Array.from(state.formats);
+      if(!formats.length) formats=["reel"];   // safety net
       $("run").classList.add("show"); $("runTitle").textContent="Working…";
       $("log").innerHTML=""; $("results").innerHTML="";
       $("run").scrollIntoView({behavior:"smooth",block:"start"});
