@@ -59,15 +59,14 @@
   .hint{color:var(--muted);font-size:.85rem}
   #run{display:none}#run.show{display:block;animation:fade .35s ease}
   @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-  #uploadwrap{display:none;margin-bottom:14px}
-  #uploadwrap.show{display:block}
+  #uploadwrap{display:none;margin-bottom:14px}#uploadwrap.show{display:block}
   .bar{height:10px;background:#0e121b;border:1px solid var(--line);border-radius:20px;overflow:hidden}
   .bar > div{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .2s}
   #uploadtext{font-size:.8rem;color:var(--muted);margin-top:6px;font-family:ui-monospace,monospace}
   .log{background:#07090e;border:1px solid var(--line);border-radius:12px;padding:12px 14px;
-    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;line-height:1.65;max-height:220px;overflow:auto;margin-bottom:16px}
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;line-height:1.65;max-height:230px;overflow:auto;margin-bottom:16px}
   .lline{white-space:pre-wrap;word-break:break-word;color:#c6cde0}.lt{color:#5d6680;margin-right:8px}
-  .lline.ok{color:var(--good)}.lline.bad{color:var(--bad)}.lline.dim{color:#7b8499}
+  .lline.ok{color:var(--good)}.lline.bad{color:var(--bad)}.lline.dim{color:#7b8499}.lline.step{color:#dfe5f1}
   .results{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
   .res{background:#0e121b;border:1px solid var(--line);border-radius:14px;overflow:hidden}
   .res .head{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;border-bottom:1px solid var(--line)}
@@ -102,7 +101,7 @@
     <input type="file" id="fileInput" accept="video/*" multiple hidden>
     <div class="files" id="files"></div>
     <div class="note">On the free server, keep clips short (a few seconds each) for a fast first test —
-      big phone videos (100 MB+) upload slowly and can exceed the free tier's memory.</div>
+      big phone videos (100 MB+) are slow and can exceed the free tier's memory.</div>
   </div>
 
   <div class="card">
@@ -126,7 +125,7 @@
     <div class="results" id="results"></div>
   </div>
 
-  <div class="footnote">Backend: <span id="burl"></span> · UI build 4</div>
+  <div class="footnote">Backend: <span id="burl"></span> · UI build 5</div>
 </div>
 
 <script>
@@ -146,6 +145,20 @@
   };
   var state = { files:[], formats:new Set(["reel"]) };
   var cards = {};
+
+  // Map raw backend stages to friendly, human-readable messages.
+  function friendlyStage(s){
+    if(!s) return "Working…";
+    if(s==="queued") return "Queued — the AI is about to start…";
+    var m = s.match(/^normalizing clip (\d+)\/(\d+)$/);
+    if(m) return "Preparing your footage — clip "+m[1]+" of "+m[2]+"…";
+    if(s==="combining clips") return "Stitching your clips into one timeline…";
+    m = s.match(/^rendering (.+)$/);
+    if(m){ var f=FORMATS[m[1]]; return "Finding the best moments & editing your "+((f&&f.nm)||m[1])+"…"; }
+    if(s==="done") return "Wrapping up…";
+    if(s==="error") return "The server hit an error.";
+    return s;
+  }
 
   function setStatus(cls, txt){ $("sdot").className="sdot "+cls; $("stext").textContent=txt; }
   (function ping(){ setStatus("wait","checking backend…");
@@ -211,18 +224,18 @@
       $("log").innerHTML=""; $("results").innerHTML=""; cards={}; hideUpload();
       $("run").scrollIntoView({behavior:"smooth",block:"start"});
       formats.forEach(makeCard);
-      logLine("Start: "+state.files.length+" clip(s), formats=["+formats.join(", ")+"], budget="+budget+"s");
+      logLine("Starting — "+state.files.length+" clip(s) → "+formats.map(function(f){return (FORMATS[f]||{}).nm||f;}).join(", "));
 
-      logLine("Checking backend…");
+      logLine("Connecting to the server…");
       try{ var h=await fetch(BACKEND_URL+"/health",{cache:"no-store"}); var hj=await h.json();
-        logLine("Backend "+hj.status+" — v"+hj.version+", ffmpeg="+hj.ffmpeg, h.ok?"ok":"bad"); }
-      catch(e){ logLine("Backend unreachable — is it awake? "+BACKEND_URL+"/health","bad"); throw new Error("backend unreachable"); }
+        logLine("Server ready (v"+hj.version+").", h.ok?"ok":"bad"); }
+      catch(e){ logLine("Can't reach the server — is it awake? Open "+BACKEND_URL+"/health","bad"); throw new Error("backend unreachable"); }
 
       var jobId = await uploadAll(formats, budget);
-      logLine("Uploaded ✓ — job "+jobId.slice(0,8)+" queued on the server","ok");
+      logLine("Upload complete — the AI is on it. This can take a minute or two.","ok");
       await pollJob(jobId, formats);
       $("runTitle").textContent="✓ Finished";
-    }catch(err){ $("runTitle").textContent="⚠ Stopped"; logLine("Stopped: "+(err&&err.message||err),"bad"); hideUpload(); }
+    }catch(err){ $("runTitle").textContent="⚠ Stopped"; logLine(String(err&&err.message||err),"bad"); hideUpload(); }
   };
 
   function uploadAll(formats, budget){
@@ -231,14 +244,14 @@
       var total=state.files.reduce(function(s,f){return s+f.size;},0);
       var xhr=new XMLHttpRequest();
       xhr.open("POST", BACKEND_URL+"/process?formats="+encodeURIComponent(formats.join(","))+"&budget="+encodeURIComponent(budget));
-      showUpload(0,"connecting… (first run may wake the server, ~30–60s)");
+      showUpload(0,"connecting… (if the server was asleep this takes ~30–60s)");
       logLine("Uploading "+state.files.length+" clip(s), "+mb(total)+"…");
       xhr.upload.onprogress=function(ev){ if(ev.lengthComputable){ var pct=ev.loaded/ev.total*100;
         showUpload(pct, "uploading "+pct.toFixed(0)+"%  ("+mb(ev.loaded)+" / "+mb(ev.total)+")"); } };
-      xhr.upload.onload=function(){ showUpload(100,"upload complete · server is queuing the job…"); };
-      xhr.onload=function(){ if(xhr.status===202){ hideUpload(); try{ resolve(JSON.parse(xhr.responseText).job_id); }catch(e){ reject(new Error("bad job response")); } }
-        else { reject(new Error("HTTP "+xhr.status+" — "+String(xhr.responseText).slice(0,160))); } };
-      xhr.onerror=function(){ reject(new Error("network error during upload (server asleep, offline, or blocked)")); };
+      xhr.upload.onload=function(){ showUpload(100,"upload received · queuing your job…"); };
+      xhr.onload=function(){ if(xhr.status===202){ hideUpload(); try{ resolve(JSON.parse(xhr.responseText).job_id); }catch(e){ reject(new Error("Couldn't read the server's response.")); } }
+        else { reject(new Error("Upload rejected (HTTP "+xhr.status+"): "+String(xhr.responseText).slice(0,140))); } };
+      xhr.onerror=function(){ reject(new Error("Network error during upload — the server may be asleep or offline.")); };
       xhr.send(fd);
     });
   }
@@ -247,27 +260,38 @@
     var lastStage="", fetched={}, misses=0;
     while(true){
       await sleep(2000);
-      var j;
-      try{ var r=await fetch(BACKEND_URL+"/status/"+jobId,{cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status); j=await r.json(); misses=0; }
-      catch(e){ misses++; logLine("(status check retry "+misses+"…)","dim"); if(misses>10) throw new Error("lost contact with server"); continue; }
-      if(j.stage && j.stage!==lastStage){ lastStage=j.stage; logLine("server: "+j.stage); }
-      formats.forEach(function(fmt){ if(!fetched[fmt]) cardStat(fmt, j.stage||"working…"); });
+      var j, status;
+      try{
+        var r=await fetch(BACKEND_URL+"/status/"+jobId,{cache:"no-store"}); status=r.status;
+        if(status===404) throw new Error("__LOST__");
+        if(!r.ok) throw new Error("HTTP "+status);
+        j=await r.json(); misses=0;
+      }catch(e){
+        if(e.message==="__LOST__")
+          throw new Error("The server restarted and lost this job — almost certainly it ran out of memory on a large file. Try shorter / smaller clips (or a bigger instance).");
+        misses++; logLine("Still working — waiting for the server… ("+misses+")","dim");
+        if(misses>15) throw new Error("Lost contact with the server (it may have crashed). Check the Render logs.");
+        continue;
+      }
+      if(j.stage && j.stage!==lastStage){ lastStage=j.stage; logLine(friendlyStage(j.stage),"step"); }
+      formats.forEach(function(fmt){ if(!fetched[fmt]) cardStat(fmt, friendlyStage(j.stage)); });
       for(var i=0;i<formats.length;i++){ var fmt=formats[i]; var e=j.formats&&j.formats[fmt];
         if(e&&e.status==="done"&&!fetched[fmt]){ fetched[fmt]=true; await fetchResult(jobId, fmt, e); }
-        else if(e&&e.status==="error"&&!fetched[fmt]){ fetched[fmt]=true; cardError(fmt, e.error||"render failed"); logLine("["+fmt+"] ✗ "+(e.error||"failed"),"bad"); }
+        else if(e&&e.status==="error"&&!fetched[fmt]){ fetched[fmt]=true; cardError(fmt, e.error||"render failed"); logLine((FORMATS[fmt]||{}).nm+" couldn't be rendered: "+(e.error||"unknown"),"bad"); }
       }
       if(j.status==="done"||j.status==="error"){
-        if(j.status==="error"){ logLine("Job failed: "+(j.error||"unknown"),"bad"); formats.forEach(function(fmt){ if(!fetched[fmt]) cardError(fmt, j.error||"job failed"); }); }
+        if(j.status==="error"){ logLine("The job failed: "+(j.error||"unknown"),"bad"); formats.forEach(function(fmt){ if(!fetched[fmt]) cardError(fmt, j.error||"job failed"); }); }
         return;
       }
     }
   }
 
   async function fetchResult(jobId, fmt, e){
-    logLine("["+fmt+"] ✓ rendered — "+(e.duration?e.duration+"s, ":"")+((e.clips&&e.clips.length)?e.clips.length+" clips":"")+"; downloading…","ok");
+    var nm=(FORMATS[fmt]||{}).nm||fmt;
+    logLine(nm+" is ready — "+(e.duration?e.duration+"s, ":"")+((e.clips&&e.clips.length)?e.clips.length+" moments":"")+". Downloading…","ok");
     try{ var r=await fetch(BACKEND_URL+"/result/"+jobId+"?format="+encodeURIComponent(fmt)); if(!r.ok) throw new Error("result HTTP "+r.status);
       var blob=await r.blob(); cardVideo(fmt, URL.createObjectURL(blob), e, blob.size); }
-    catch(err){ cardError(fmt, err.message); logLine("["+fmt+"] download failed: "+err.message,"bad"); }
+    catch(err){ cardError(fmt, err.message); logLine(nm+" download failed: "+err.message,"bad"); }
   }
 })();
 </script>

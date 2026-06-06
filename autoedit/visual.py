@@ -39,7 +39,7 @@ def _run_meta_pass(path: str, vf: str, fps: int) -> List[Dict[str, float]]:
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".txt")
     tmp.close()
     full_vf = f"fps={fps},{vf},metadata=print:file={tmp.name}"
-    cmd = ["ffmpeg", "-hide_banner", "-v", "error", "-i", path,
+    cmd = ["ffmpeg", "-hide_banner", "-v", "error", "-threads", "1", "-i", path,
            "-vf", full_vf, "-an", "-f", "null", "-"]
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
     samples: List[Dict[str, float]] = []
@@ -67,7 +67,7 @@ def _run_meta_pass(path: str, vf: str, fps: int) -> List[Dict[str, float]]:
 def detect_shots(path: str, duration: float, threshold: float = 0.4,
                  min_len: float = 1.5, max_len: float = 8.0) -> List[Tuple[float, float]]:
     """Scene-cut detection via ffmpeg scene score; long takes are subdivided."""
-    cmd = ["ffmpeg", "-hide_banner", "-i", path,
+    cmd = ["ffmpeg", "-hide_banner", "-threads", "1", "-i", path,
            "-vf", f"select='gt(scene,{threshold})',showinfo", "-an", "-f", "null", "-"]
     p = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
     cuts = sorted(float(t) for t in _PTS.findall(p.stderr))

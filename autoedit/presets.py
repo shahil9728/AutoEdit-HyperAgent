@@ -7,6 +7,7 @@ Cinematic / travel footage is visual-dominant; a vlog or interview is speech-
 dominant. The two weights always sum to 1.0.
 """
 
+import os
 from typing import Any, Dict
 
 # caption_style: "wordpop" (TikTok-style active-word highlight) | "line" | "none"
@@ -56,6 +57,12 @@ def get_preset(name: str) -> Dict[str, Any]:
             f"Unknown format '{name}'. Available: {', '.join(sorted(PRESETS))}"
         )
     p = dict(PRESETS[key])  # copy so callers can annotate freely
+    # Downscale outputs on memory-constrained instances (x264 memory scales with
+    # resolution). AUTOEDIT_OUTPUT_SCALE=1.0 on a bigger box for full resolution.
+    scale = float(os.environ.get("AUTOEDIT_OUTPUT_SCALE", "0.7"))
+    if scale != 1.0:
+        p["width"] = max(2, int(round(p["width"] * scale / 2)) * 2)
+        p["height"] = max(2, int(round(p["height"] * scale / 2)) * 2)
     vw, sw = _WEIGHTS.get(key, (0.5, 0.5))
     p["visual_weight"] = vw
     p["speech_weight"] = sw

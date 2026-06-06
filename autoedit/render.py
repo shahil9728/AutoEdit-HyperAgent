@@ -16,6 +16,10 @@ from typing import List
 
 from .edl import EDL, CaptionWord
 
+# Pin ffmpeg/x264 threads low: x264 allocates frame buffers per thread, which is
+# the main RAM driver. 1 keeps a 512MB box alive; raise on a bigger instance.
+_THREADS = os.environ.get("AUTOEDIT_THREADS", "1")
+
 
 # --------------------------------------------------------------------------- #
 # Pass 1 — cut + reframe + concat
@@ -74,8 +78,8 @@ def build_pass1_cmd(edl: EDL, body_name: str) -> List[str]:
         maps = ["-map", "[vout]"]
 
     filtergraph = ";".join(parts)
-    cmd = ["ffmpeg", "-y", "-i", src, "-filter_complex", filtergraph, *maps,
-           "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+    cmd = ["ffmpeg", "-y", "-threads", _THREADS, "-i", src, "-filter_complex", filtergraph, *maps,
+           "-c:v", "libx264", "-preset", "ultrafast", "-crf", "22",
            "-pix_fmt", "yuv420p"]
     if edl.source.has_audio:
         cmd += ["-c:a", "aac", "-b:a", "160k"]
@@ -170,9 +174,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
 def build_pass2_cmd(body_name: str, ass_name: str, final_name: str,
                     has_audio: bool) -> List[str]:
-    cmd = ["ffmpeg", "-y", "-i", body_name,
+    cmd = ["ffmpeg", "-y", "-threads", _THREADS, "-i", body_name,
            "-vf", f"subtitles={ass_name}",
-           "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+           "-c:v", "libx264", "-preset", "ultrafast", "-crf", "22",
            "-pix_fmt", "yuv420p"]
     cmd += ["-c:a", "copy"] if has_audio else ["-an"]
     cmd += [final_name]

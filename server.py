@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""HTTP backend for autoedit — async job API so long renders don't time out.
+"""HTTP backend for autoedit — async job API, tuned to survive small instances.
 
   GET  /                      the upload UI (landing.html)        [also /app]
   GET  /health                health check (200 ok / 503)         [also /healthz]
   POST /process?formats=reel,short&budget=12
-        multipart `files` (>=1). Returns 202 {job_id} immediately and renders
-        in a background thread. All clips are combined into one edit.
+        multipart `files` (>=1). Returns 202 {job_id}; renders in background.
   GET  /status/<job_id>       JSON: status, current stage, per-format state
-  GET  /result/<job_id>?format=reel   the rendered MP4 for that format
+  GET  /result/<job_id>?format=reel   the rendered MP4
   OPTIONS *                   CORS preflight
 
-Why async: rendering can take minutes; holding one HTTP request open that long
-trips Cloudflare/Render timeouts (the 520 you saw). Short poll requests don't.
+Memory: video encoding is RAM-hungry and x264 scales buffers with thread count,
+so on a 512MB box we pin AUTOEDIT_THREADS=1 and downscale outputs
+(AUTOEDIT_OUTPUT_SCALE, applied in presets.py). Raise these on a bigger instance.
 """
 
 import cgi
@@ -34,16 +34,18 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 START_TIME = time.time()
 JOBS = {}
 LOCK = threading.Lock()
-JOB_TTL = 1800  # seconds
+JOB_TTL = 1800
+
+THREADS = os.environ.get("AUTOEDIT_THREADS", "1")          # 1 = lowest memory
+NORM_W = int(os.environ.get("AUTOEDIT_NORM_WIDTH", "1280"))
+NORM_H = int(os.environ.get("AUTOEDIT_NORM_HEIGHT", "720"))
+MAX_CLIP = os.environ.get("AUTOEDIT_MAX_CLIP_SECS", "120")  # cap each input clip
 
 
 def log(msg):
     print(f"[autoedit {datetime.datetime.now().strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
-# --------------------------------------------------------------------------- #
-# ffmpeg helpers (ultrafast presets — free-tier CPU is slow)
-# --------------------------------------------------------------------------- #
 def _run(cmd):
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if p.returncode != 0:
@@ -59,20 +61,20 @@ def _has_audio(path):
 
 
 def _normalize(src, out):
-    vf = ("scale=1280:720:force_original_aspect_ratio=decrease,"
-          "pad=1280:720:-1:-1:color=black,setsar=1,fps=30,format=yuv420p")
+    vf = (f"scale={NORM_W}:{NORM_H}:force_original_aspect_ratio=decrease,"
+          f"pad={NORM_W}:{NORM_H}:-1:-1:color=black,setsar=1,fps=30,format=yuv420p")
+    base = ["ffmpeg", "-y", "-threads", THREADS, "-i", src]
     if _has_audio(src):
         fc = f"[0:v]{vf}[v];[0:a]aresample=44100,aformat=channel_layouts=stereo[a]"
-        _run(["ffmpeg", "-y", "-i", src, "-filter_complex", fc, "-map", "[v]", "-map", "[a]",
-              "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
-              "-c:a", "aac", "-ar", "44100", "-ac", "2", out])
+        _run(base + ["-filter_complex", fc, "-map", "[v]", "-map", "[a]", "-t", MAX_CLIP,
+                     "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
+                     "-c:a", "aac", "-ar", "44100", "-ac", "2", out])
     else:
-        fc = f"[0:v]{vf}[v]"
-        _run(["ffmpeg", "-y", "-i", src,
-              "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
-              "-filter_complex", fc, "-map", "[v]", "-map", "1:a", "-shortest",
-              "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
-              "-c:a", "aac", "-ar", "44100", "-ac", "2", out])
+        _run(base + ["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
+                     "-filter_complex", f"[0:v]{vf}[v]", "-map", "[v]", "-map", "1:a",
+                     "-shortest", "-t", MAX_CLIP,
+                     "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
+                     "-c:a", "aac", "-ar", "44100", "-ac", "2", out])
 
 
 def _prepare_source(paths, work, stage):
@@ -91,8 +93,9 @@ def _prepare_source(paths, work, stage):
         inputs += ["-i", p]
     streams = "".join(f"[{i}:v][{i}:a]" for i in range(len(norm)))
     fc = f"{streams}concat=n={len(norm)}:v=1:a=1[v][a]"
-    _run(["ffmpeg", "-y", *inputs, "-filter_complex", fc, "-map", "[v]", "-map", "[a]",
-          "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26", "-c:a", "aac", combined])
+    _run(["ffmpeg", "-y", "-threads", THREADS, *inputs, "-filter_complex", fc,
+          "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "ultrafast",
+          "-crf", "26", "-c:a", "aac", combined])
     return combined
 
 
@@ -220,7 +223,7 @@ class Handler(BaseHTTPRequestHandler):
         fmt = (q.get("format") or [None])[0]
         entry = job["formats"].get(fmt) if fmt else None
         if not entry or entry.get("status") != "done":
-            self._json(409, {"error": "not ready", "state": entry.get("status") if entry else None})
+            self._json(409, {"error": "not ready"})
             return
         with open(entry["path"], "rb") as f:
             vid = f.read()
@@ -245,7 +248,7 @@ class Handler(BaseHTTPRequestHandler):
                 p = os.path.join(work, f"input{i}.mp4")
                 with open(p, "wb") as f:
                     if getattr(it, "file", None):
-                        shutil.copyfileobj(it.file, f, 1 << 16)   # stream, low memory
+                        shutil.copyfileobj(it.file, f, 1 << 16)
                     else:
                         v = it.value
                         f.write(v if isinstance(v, (bytes, bytearray)) else str(v).encode("latin-1"))
@@ -304,5 +307,5 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8000"))
-    log(f"autoedit v{__version__} on :{port}  (app:/  health:/health  api:POST /process)")
+    log(f"autoedit v{__version__} on :{port} threads={THREADS} norm={NORM_W}x{NORM_H}")
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()

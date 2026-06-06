@@ -17,4 +17,4 @@ an `llm` callable to replace the heuristic highlight picker with a real model.
 from .pipeline import run_pipeline  # noqa: F401
 
 __all__ = ["run_pipeline"]
-__version__ = "0.3.0"
+__version__ = "0.3.1"
