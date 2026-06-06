@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Minimal HTTP backend for autoedit — the upload -> render -> download loop.
+"""HTTP backend for autoedit — serves the web app AND the render API.
 
-  GET  /                                liveness + info (JSON)
-  GET  /health   (alias /healthz)       health check: 200 ok, 503 if ffmpeg missing
+  GET  /            the upload UI (landing.html)            [also /app]
+  GET  /health      health check: 200 ok, 503 if ffmpeg missing   [also /healthz]
   POST /process?format=reel&budget=12   body = raw video bytes -> rendered MP4
+  OPTIONS *         CORS preflight
 
-Python stdlib only (no Flask needed). This is essentially the service you'd
-deploy behind the landing page. Render (render.yaml) and Fly (fly.toml) point
-their health checks at /health.
+Serving the page from the same origin as the API means the browser talks to
+/process with no cross-origin friction. CORS headers are still sent so the page
+also works when hosted elsewhere. Python stdlib only.
 """
 
 import datetime
@@ -21,15 +22,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from autoedit import __version__, run_pipeline
 
+HERE = os.path.dirname(os.path.abspath(__file__))
 START_TIME = time.time()
 
 
 def health_payload():
-    """Liveness + confirmation the critical dependency (ffmpeg) is present.
-
-    Returns (ok, payload). `ok` is False when ffmpeg is missing — the service is
-    up but can't actually render, so /health reports 503 (degraded).
-    """
+    """Liveness + confirmation the critical dependency (ffmpeg) is present."""
     ffmpeg = shutil.which("ffmpeg")
     ok = ffmpeg is not None
     return ok, {
@@ -46,23 +44,43 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):  # quiet
         pass
 
+    def _cors(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Expose-Headers", "X-Clips, X-Duration")
+
     def _send(self, code, ctype, body, extra=None):
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self._cors()
         for k, v in (extra or {}).items():
             self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
 
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self._cors()
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Max-Age", "86400")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def _serve_app(self):
+        try:
+            with open(os.path.join(HERE, "landing.html"), "rb") as f:
+                self._send(200, "text/html; charset=utf-8", f.read())
+        except FileNotFoundError:
+            self._send(200, "application/json",
+                       json.dumps({"status": "ok",
+                                   "note": "landing.html missing; API at POST /process"}).encode())
+
     def do_GET(self):
         path = urllib.parse.urlparse(self.path).path.rstrip("/")
-        if path == "":                            # root: liveness + quick info
-            _, payload = health_payload()
-            payload["endpoint"] = "POST /process?format=reel"
-            self._send(200, "application/json", json.dumps(payload).encode())
-        elif path in ("/health", "/healthz"):     # readiness: 503 if ffmpeg missing
+        if path in ("", "/app"):
+            self._serve_app()
+        elif path in ("/health", "/healthz"):
             ok, payload = health_payload()
             self._send(200 if ok else 503, "application/json",
                        json.dumps(payload).encode())
@@ -106,5 +124,5 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8000"))
-    print(f"autoedit backend listening on :{port}  (health: /health)", flush=True)
+    print(f"autoedit on :{port}  (app: /  health: /health  api: POST /process)", flush=True)
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
