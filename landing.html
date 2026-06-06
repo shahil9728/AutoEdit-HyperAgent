@@ -28,7 +28,7 @@
   .hero h1 .g{background:linear-gradient(100deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
   .hero p{color:var(--muted);font-size:1.05rem;margin-top:12px;max-width:56ch;margin-inline:auto}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:23px;margin-bottom:17px;box-shadow:0 24px 60px -30px rgba(0,0,0,.7)}
-  .step{display:flex;align-items:center;}
+  .step{display:flex;align-items:center;gap:11px;margin-bottom:14px}
   .step .num{width:25px;height:25px;border-radius:8px;background:var(--panel2);border:1px solid var(--line2);display:grid;place-items:center;font-family:'Space Grotesk';font-weight:700;font-size:.82rem;color:var(--accent2)}
   .step h2{font-family:'Space Grotesk';font-size:1.1rem;font-weight:600}
   .step .opt{margin-left:auto;font-size:.8rem;color:var(--muted)}
@@ -125,14 +125,16 @@
     <div class="results" id="results"></div>
   </div>
 
-  <div class="footnote">Backend: <span id="burl"></span> · UI build 5</div>
+  <div class="footnote">Backend: <span id="burl"></span> · UI build 6</div>
 </div>
 
 <script>
 (function(){
   "use strict";
+  // Default to the same origin that served this page (works locally AND on
+  // Render). Override with ?backend=https://your-backend if hosted separately.
   var BACKEND_URL = (new URLSearchParams(location.search).get("backend")
-      || "https://autoedit-backend.onrender.com").replace(/\/+$/, "");
+      || location.origin).replace(/\/+$/, "");
   var $ = function(id){ return document.getElementById(id); };
   $("burl").textContent = BACKEND_URL;
   var sleep = function(ms){ return new Promise(function(r){ setTimeout(r, ms); }); };
