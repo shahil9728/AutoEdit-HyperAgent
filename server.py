@@ -9,9 +9,12 @@
   GET  /result/<job_id>?format=reel   the rendered MP4
   OPTIONS *                   CORS preflight
 
-Memory: video encoding is RAM-hungry and x264 scales buffers with thread count,
-so on a 512MB box we pin AUTOEDIT_THREADS=1 and downscale outputs
-(AUTOEDIT_OUTPUT_SCALE, applied in presets.py). Raise these on a bigger instance.
+Survival on a 512MB / 0.1-CPU box:
+  * ffmpeg runs at nice 19 so the web server always answers /health (else Render
+    restarts the instance mid-render).
+  * AUTOEDIT_THREADS=1 + downscaled outputs (presets.py) keep RAM in budget.
+  * /health is pure in-memory (cached ffmpeg lookup) so it returns instantly.
+Raise AUTOEDIT_THREADS / AUTOEDIT_OUTPUT_SCALE / AUTOEDIT_NORM_* on a bigger box.
 """
 
 import cgi
@@ -36,10 +39,12 @@ JOBS = {}
 LOCK = threading.Lock()
 JOB_TTL = 1800
 
-THREADS = os.environ.get("AUTOEDIT_THREADS", "1")          # 1 = lowest memory
-NORM_W = int(os.environ.get("AUTOEDIT_NORM_WIDTH", "1280"))
-NORM_H = int(os.environ.get("AUTOEDIT_NORM_HEIGHT", "720"))
-MAX_CLIP = os.environ.get("AUTOEDIT_MAX_CLIP_SECS", "120")  # cap each input clip
+THREADS = os.environ.get("AUTOEDIT_THREADS", "1")
+NORM_W = int(os.environ.get("AUTOEDIT_NORM_WIDTH", "960"))
+NORM_H = int(os.environ.get("AUTOEDIT_NORM_HEIGHT", "540"))
+MAX_CLIP = os.environ.get("AUTOEDIT_MAX_CLIP_SECS", "120")
+_NICE = ["nice", "-n", "19"] if shutil.which("nice") else []
+_FFMPEG = shutil.which("ffmpeg")  # cached so /health does zero work
 
 
 def log(msg):
@@ -47,15 +52,15 @@ def log(msg):
 
 
 def _run(cmd):
-    p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    p = subprocess.run(_NICE + cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if p.returncode != 0:
         tail = "\n".join(p.stderr.strip().splitlines()[-8:])
         raise RuntimeError(f"ffmpeg failed ({p.returncode}): {tail}")
 
 
 def _has_audio(path):
-    out = subprocess.run(["ffprobe", "-v", "quiet", "-select_streams", "a",
-                          "-show_entries", "stream=index", "-of", "csv=p=0", path],
+    out = subprocess.run(_NICE + ["ffprobe", "-v", "quiet", "-select_streams", "a",
+                                  "-show_entries", "stream=index", "-of", "csv=p=0", path],
                          stdout=subprocess.PIPE, text=True)
     return bool(out.stdout.strip())
 
@@ -140,10 +145,9 @@ def _sweep():
 
 
 def health_payload():
-    ffmpeg = shutil.which("ffmpeg")
-    ok = ffmpeg is not None
+    ok = _FFMPEG is not None
     return ok, {"status": "ok" if ok else "degraded", "service": "autoedit",
-                "version": __version__, "ffmpeg": bool(ffmpeg),
+                "version": __version__, "ffmpeg": bool(_FFMPEG),
                 "uptime_seconds": round(time.time() - START_TIME, 1),
                 "active_jobs": len(JOBS),
                 "time": datetime.datetime.now(datetime.timezone.utc).isoformat()}
@@ -307,5 +311,5 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8000"))
-    log(f"autoedit v{__version__} on :{port} threads={THREADS} norm={NORM_W}x{NORM_H}")
+    log(f"autoedit v{__version__} on :{port} threads={THREADS} norm={NORM_W}x{NORM_H} nice={'on' if _NICE else 'off'}")
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()

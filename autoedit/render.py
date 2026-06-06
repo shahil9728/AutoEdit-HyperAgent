@@ -11,6 +11,7 @@ subject tracking (face/saliency) would set focus_x per-frame; see README.
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 from typing import List
 
@@ -19,6 +20,10 @@ from .edl import EDL, CaptionWord
 # Pin ffmpeg/x264 threads low: x264 allocates frame buffers per thread, which is
 # the main RAM driver. 1 keeps a 512MB box alive; raise on a bigger instance.
 _THREADS = os.environ.get("AUTOEDIT_THREADS", "1")
+
+# Run ffmpeg at lowest CPU priority so the web server stays responsive to health
+# checks on a tiny (0.1 CPU) instance — otherwise the box gets killed mid-render.
+_NICE = ["nice", "-n", "19"] if shutil.which("nice") else []
 
 
 # --------------------------------------------------------------------------- #
@@ -205,7 +210,7 @@ def render(edl: EDL, workdir: str, basename: str) -> str:
 
 
 def _run(cmd: List[str], cwd: str) -> None:
-    proc = subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE,
+    proc = subprocess.run(_NICE + cmd, cwd=cwd, stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE, text=True)
     if proc.returncode != 0:
         tail = "\n".join(proc.stderr.strip().splitlines()[-15:])

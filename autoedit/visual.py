@@ -21,6 +21,7 @@ from __future__ import annotations
 import math
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 from typing import Dict, List, Tuple
@@ -29,6 +30,8 @@ _YAVG = "lavfi.signalstats.YAVG"
 _SAT = "lavfi.signalstats.SATAVG"
 _LAPLACIAN = "0 -1 0 -1 4 -1 0 -1 0"  # 4-neighbour discrete Laplacian kernel
 _PTS = re.compile(r"pts_time:([0-9.]+)")
+# Lowest CPU priority so the web server keeps answering health checks mid-analysis.
+_NICE = ["nice", "-n", "19"] if shutil.which("nice") else []
 
 
 # --------------------------------------------------------------------------- #
@@ -41,7 +44,7 @@ def _run_meta_pass(path: str, vf: str, fps: int) -> List[Dict[str, float]]:
     full_vf = f"fps={fps},{vf},metadata=print:file={tmp.name}"
     cmd = ["ffmpeg", "-hide_banner", "-v", "error", "-threads", "1", "-i", path,
            "-vf", full_vf, "-an", "-f", "null", "-"]
-    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    subprocess.run(_NICE + cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
     samples: List[Dict[str, float]] = []
     cur: Dict[str, float] = None
     with open(tmp.name) as f:
@@ -69,7 +72,7 @@ def detect_shots(path: str, duration: float, threshold: float = 0.4,
     """Scene-cut detection via ffmpeg scene score; long takes are subdivided."""
     cmd = ["ffmpeg", "-hide_banner", "-threads", "1", "-i", path,
            "-vf", f"select='gt(scene,{threshold})',showinfo", "-an", "-f", "null", "-"]
-    p = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    p = subprocess.run(_NICE + cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
     cuts = sorted(float(t) for t in _PTS.findall(p.stderr))
 
     bounds = [0.0]
