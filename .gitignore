@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Generated demo artifacts (regenerate with `make sample` / `make demo`)
+out/
+out_vo/
+job_*/
+fixtures/source.mp4
+
+# Packaging / OS
+*.zip
+.DS_Store

@@ -1,0 +1,17 @@
+# Core MVP (deterministic render spine) needs only ffmpeg on PATH + stdlib.
+# Everything below is for wiring the *real* ML steps.
+
+# --- Speech-to-text (Analysis Agent) ---
+faster-whisper>=1.0.0        # CTranslate2 Whisper; GPU or CPU
+
+# --- Optional: highlight ranking via an LLM (Selection Agent) ---
+# Use your provider's SDK, e.g.:
+# openai>=1.30.0
+# anthropic>=0.30.0
+
+# --- Optional: real subject-tracking reframe (Platform Agent) ---
+# mediapipe>=0.10.0          # face/pose for focus_x per clip
+# opencv-python>=4.9.0
+
+# --- Optional: beat-synced cutting (Music Agent) ---
+# librosa>=0.10.0

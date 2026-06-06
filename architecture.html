@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>autoedit — System Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0c11; --panel:#13161f; --panel2:#191d29; --line:#272d3d;
+    --txt:#e8ebf3; --muted:#98a2b8; --soft:#6b7280;
+    --accent:#7c5cff; --accent2:#22d3ee; --good:#34d399; --warn:#fbbf24;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:radial-gradient(1200px 700px at 80% -10%, #161a2b 0%, var(--bg) 55%);
+    color:var(--txt);font-family:'Inter',sans-serif;line-height:1.55;
+    -webkit-font-smoothing:antialiased;padding:0 0 80px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 6%}
+  .display{font-family:'Space Grotesk',sans-serif}
+  .mono{font-family:'JetBrains Mono',monospace}
+
+  header{padding:30px 0 10px}
+  .brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk';font-weight:600;
+    letter-spacing:.02em;color:var(--muted);font-size:.95rem}
+  .brand .dot{width:11px;height:11px;border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .hero{padding:26px 0 30px;border-bottom:1px solid var(--line)}
+  h1{font-family:'Space Grotesk';font-size:clamp(1.9rem,4.6vw,3rem);font-weight:700;line-height:1.05;
+    letter-spacing:-.01em}
+  h1 .g{background:linear-gradient(100deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .sub{color:var(--muted);font-size:1.08rem;max-width:60ch;margin-top:14px}
+
+  .section-label{font-family:'Space Grotesk';font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--muted);margin:46px 0 18px;display:flex;align-items:center;gap:12px}
+  .section-label::after{content:'';flex:1;height:1px;background:var(--line)}
+
+  /* pipeline */
+  .pipeline{position:relative;padding-left:46px}
+  .pipeline::before{content:'';position:absolute;left:17px;top:18px;bottom:18px;width:3px;
+    border-radius:3px;background:linear-gradient(180deg,var(--accent),var(--accent2))}
+  .busLabel{position:absolute;left:-6px;top:-26px;font-family:'Space Grotesk';font-size:.72rem;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--accent2)}
+  .stage{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;margin-bottom:14px;transition:transform .15s,border-color .15s}
+  .stage:hover{transform:translateX(3px);border-color:#39415a}
+  .stage::before{content:'';position:absolute;left:-35px;top:22px;width:13px;height:13px;border-radius:50%;
+    background:var(--bg);border:3px solid var(--accent);box-shadow:0 0 0 4px rgba(124,92,255,.12)}
+  .stage .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .ico{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:1.05rem;
+    background:var(--panel2);border:1px solid var(--line);flex-shrink:0}
+  .stage h3{font-family:'Space Grotesk';font-size:1.06rem;font-weight:600}
+  .stage .n{font-family:'JetBrains Mono';font-size:.8rem;color:var(--muted);margin-right:2px}
+  .stage p{color:var(--muted);font-size:.93rem;margin-top:7px}
+  .tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+  .tag{font-size:.72rem;font-weight:600;letter-spacing:.02em;padding:3px 9px;border-radius:20px;
+    border:1px solid var(--line);color:var(--muted);background:#0e121b}
+  .tag.real{color:var(--good);border-color:rgba(52,211,153,.35);background:rgba(52,211,153,.08)}
+  .tag.plug{color:var(--accent2);border-color:rgba(34,211,238,.32);background:rgba(34,211,238,.07)}
+  .tag.plan{color:var(--warn);border-color:rgba(251,191,36,.32);background:rgba(251,191,36,.07)}
+  .endcap{background:linear-gradient(135deg,rgba(124,92,255,.14),rgba(34,211,238,.10));
+    border:1px solid #2f3650}
+  .endcap::before{border-color:var(--accent2);box-shadow:0 0 0 4px rgba(34,211,238,.12)}
+
+  /* legend */
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin:14px 0 0;font-size:.85rem;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:7px}
+  .swatch{width:11px;height:11px;border-radius:3px}
+
+  /* code */
+  .code{background:#0c0f17;border:1px solid var(--line);border-radius:14px;padding:18px 20px;
+    font-family:'JetBrains Mono';font-size:.82rem;color:#c6cde0;overflow-x:auto;line-height:1.7}
+  .code .k{color:var(--accent2)} .code .s{color:#a5e3b8} .code .c{color:#5d6680}
+
+  /* knobs */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:13px}
+  .knob{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:15px 16px}
+  .knob h4{font-family:'Space Grotesk';font-size:.97rem;font-weight:600;display:flex;align-items:center;gap:9px}
+  .knob .badge{font-size:.62rem;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:6px;
+    background:rgba(124,92,255,.16);color:#b9a8ff}
+  .knob .badge.new{background:rgba(251,191,36,.16);color:var(--warn)}
+  .knob p{color:var(--muted);font-size:.85rem;margin-top:7px}
+  .foot{margin-top:50px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><span class="dot"></span> autoedit · system architecture</div>
+  </header>
+
+  <div class="hero">
+    <h1>One pipeline, <span class="g">six agents</span>,<br>one shared edit list.</h1>
+    <p class="sub">Raw clips and a few user choices go in the top. Each agent makes one decision and
+    writes it to a shared <b style="color:#cfd6e8">Edit Decision List (EDL)</b> — the single source of
+    truth — before the render layer turns that list into finished videos. Nothing is a black box: you can
+    read or override the EDL at any stage.</p>
+  </div>
+
+  <div class="section-label">The flow</div>
+  <div class="pipeline">
+    <div class="busLabel">↕ EDL bus — shared state</div>
+
+    <div class="stage endcap">
+      <div class="top"><div class="ico">⬆️</div><h3>Input</h3></div>
+      <p>Multiple raw clips (a few seconds to several hours) + the user's choices: output format(s),
+         captions, voice-over, music, auto-reframe.</p>
+    </div>
+
+    <div class="stage">
+      <div class="top"><div class="ico">🔍</div><h3><span class="n">01</span> Analysis Agent</h3></div>
+      <p>Probes every file, transcribes speech to word-level timestamps, <b style="color:#cfd6e8">and now
+         analyses the picture</b> — splits footage into shots and scores each for sharpness, exposure,
+         saturation and motion. Builds the structured understanding everything downstream reads.</p>
+      <div class="tags"><span class="tag real">metadata · real (ffprobe)</span><span class="tag real">visual quality · real (ffmpeg)</span><span class="tag plug">transcription · Whisper-pluggable</span><span class="tag plan">aesthetic model · planned</span></div>
+    </div>
+
+    <div class="stage">
+      <div class="top"><div class="ico">⭐</div><h3><span class="n">02</span> Clip Selection Agent</h3></div>
+      <p>Ranks each shot by a <b style="color:#cfd6e8">blend of visual quality and speech engagement</b>,
+         weighted per format — cinematic/travel trust the picture, a vlog trusts the talking — then drops
+         the weak / dark / blurry / low-value shots against a time budget.</p>
+      <div class="tags"><span class="tag real">blended visual + speech · real</span><span class="tag plug">LLM ranking · pluggable</span></div>
+    </div>
+
+    <div class="stage">
+      <div class="top"><div class="ico">🎬</div><h3><span class="n">03</span> Storytelling Agent</h3></div>
+      <p>Orders the kept clips into a sequence with pacing — leads with the strongest hook, then keeps the
+         narrative coherent. Adapts to the chosen style.</p>
+      <div class="tags"><span class="tag real">rule-based · real</span><span class="tag plug">style-aware · pluggable</span></div>
+    </div>
+
+    <div class="stage">
+      <div class="top"><div class="ico">✂️</div><h3><span class="n">04</span> Editing &amp; Reframe Agent</h3></div>
+      <p>Cuts each selected range, reframes to the target aspect (9:16 / 1:1 / 16:9), concatenates, and
+         applies transitions / speed.</p>
+      <div class="tags"><span class="tag real">cut + reframe · real (ffmpeg)</span><span class="tag plan">face-tracking reframe · planned</span></div>
+    </div>
+
+    <div class="stage">
+      <div class="top"><div class="ico">🔊</div><h3><span class="n">05</span> Audio, Captions &amp; Voice-Over Agent</h3></div>
+      <p>Generates word-pop captions, adds background music, and (new) can synthesize a voice-over track,
+         ducking music underneath it. Syncs cuts to the beat.</p>
+      <div class="tags"><span class="tag real">captions · real (libass)</span><span class="tag plan">voice-over (TTS) · new</span><span class="tag plan">music + beat-sync · planned</span></div>
+    </div>
+
+    <div class="stage">
+      <div class="top"><div class="ico">📐</div><h3><span class="n">06</span> Platform Optimization Agent</h3></div>
+      <p>Renders a tailored version per platform — aspect ratio, length, caption style and encode settings
+         for Shorts, Reels, TikTok, feed, or cinematic.</p>
+      <div class="tags"><span class="tag real">presets + export · real</span></div>
+    </div>
+
+    <div class="stage endcap">
+      <div class="top"><div class="ico">⬇️</div><h3>Output</h3></div>
+      <p>Finished, publish-ready videos — multiple platform versions from one run, plus the EDL JSON for
+         review or manual tweaks.</p>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:#34d399"></span> Real &amp; running today</span>
+    <span><span class="swatch" style="background:#22d3ee"></span> Pluggable (1-function swap)</span>
+    <span><span class="swatch" style="background:#fbbf24"></span> Planned / new</span>
+  </div>
+
+  <div class="section-label">Inside the EDL — the shared contract</div>
+  <div class="code mono">
+<span class="c">// every agent reads + writes this one object</span><br>
+{<br>
+&nbsp;&nbsp;<span class="k">"source"</span>: { width:1920, height:1080, fps:30, has_audio:true },<br>
+&nbsp;&nbsp;<span class="k">"target"</span>: { name:<span class="s">"short"</span>, aspect:<span class="s">"9:16"</span>, width:1080, height:1920 },<br>
+&nbsp;&nbsp;<span class="k">"timeline"</span>: [&nbsp;<span class="c">// Selection + Storytelling write this</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;{ id:<span class="s">"seg3"</span>, src_in:11.4, src_out:15.4, score:0.78, focus_x:0.5 },<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{ id:<span class="s">"seg0"</span>, src_in:0.0,&nbsp; src_out:3.6,&nbsp; score:0.58, focus_x:0.5 } ],<br>
+&nbsp;&nbsp;<span class="k">"captions"</span>: [ { text:<span class="s">"three"</span>, start:1.2, end:1.58 }, … ],<br>
+&nbsp;&nbsp;<span class="k">"voiceover"</span>: null,&nbsp;&nbsp;<span class="c">// ← new slot the VO agent fills</span><br>
+&nbsp;&nbsp;<span class="k">"music"</span>: null<br>
+}
+  </div>
+
+  <div class="section-label">Knobs we can turn</div>
+  <div class="grid">
+    <div class="knob"><h4>Selection brain <span class="badge">swap</span></h4><p>Heuristic → an LLM that reasons about hooks, payoff and emotion. One function (<span class="mono">select_highlights</span>).</p></div>
+    <div class="knob"><h4>Voice-over <span class="badge new">new</span></h4><p>Add a TTS narration stage + auto-duck music. Script can be generated from the transcript or user-supplied.</p></div>
+    <div class="knob"><h4>Output presets</h4><p>Add / edit formats (cinematic, travel montage, ad, product). Each is just an entry in <span class="mono">presets.py</span>.</p></div>
+    <div class="knob"><h4>Caption style</h4><p>Word-pop, karaoke, or clean lines; fonts, colors, position. Driven by the target preset.</p></div>
+    <div class="knob"><h4>Reframe intelligence <span class="badge new">upgrade</span></h4><p>Center-crop → face / saliency tracking so the subject stays framed (sets <span class="mono">focus_x</span> per clip).</p></div>
+    <div class="knob"><h4>Music &amp; beat-sync</h4><p>Licensed library + snap cuts to the beat. Licensing is the real constraint for monetized output.</p></div>
+    <div class="knob"><h4>Pacing &amp; speed</h4><p>Speed ramps, tighter cuts, silence trimming — tunable per style in the Storytelling agent.</p></div>
+    <div class="knob"><h4>Brand kit</h4><p>Intro/outro, logo bug, lower-thirds, color LUT — a template layer on the Editing agent.</p></div>
+  </div>
+
+  <div class="foot">
+    autoedit MVP · the deterministic render spine (cut → reframe → captions → export) runs today; the
+    pluggable + planned stages are where the product roadmap lives. Tell me which knob to turn first.
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# In Render: New + -> Blueprint -> connect this repo. Render reads this file,
+# builds the Dockerfile, and (autoDeploy) redeploys on every push to the branch.
+services:
+  - type: web
+    name: autoedit-backend
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    healthCheckPath: /
+    autoDeploy: true
+    # Render injects $PORT automatically; server.py reads it.

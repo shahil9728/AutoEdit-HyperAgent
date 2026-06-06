@@ -1,0 +1,12 @@
+.git
+.gitignore
+__pycache__/
+*.pyc
+.venv/
+venv/
+out/
+out_vo/
+job_*/
+fixtures/source.mp4
+*.zip
+.DS_Store
