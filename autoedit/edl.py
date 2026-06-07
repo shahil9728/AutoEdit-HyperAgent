@@ -82,7 +82,12 @@ class Clip:
     visual_score: float = 0.0   # from the visual-analysis pass (0..1)
     speech_score: float = 0.0   # from transcript hook analysis (0..1)
     motion: float = 0.0         # normalised motion level of the clip (0..1)
-    effect: str = "none"        # styling effect chosen by the Effects agent
+    brightness: float = 0.0     # mean luma (YAVG, ~0-255); 0 => unknown
+    saturation: float = 0.0     # mean saturation (SATAVG); 0 => unknown
+    exposure: float = 0.0       # how well-exposed (0..1, 1=ideal)
+    effect: str = "none"        # camera move chosen by the Effects agent
+    look: str = "none"          # colour/light grade chosen by the Style agent
+    flash_in: bool = False      # white-flash transition INTO this clip
     reason: str = ""
     focus_x: float = 0.5  # 0..1 horizontal crop centre for reframing
     speed: float = 1.0

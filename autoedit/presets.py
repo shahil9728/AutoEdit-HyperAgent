@@ -41,6 +41,26 @@ _WEIGHTS = {
 # soft dissolve) instead of a literal "slideleft" — the slide is what made the
 # old reels read as a plain slideshow.
 _PUNCHY = ["smoothleft", "zoomin", "dissolve", "smoothup", "circleopen"]
+
+# Style/Look palette per format — the colour + lighting grades the Style agent
+# may choose from, plus the coherent "base" grade for clips with no strong cue.
+# Names map to concrete ffmpeg chains in render._look_filters.
+_LOOKS = {
+    "short": dict(base="vibrant",
+                  allow=["vibrant", "teal_orange", "lift_glow", "bloom_warm", "moody_cool"]),
+    "reel": dict(base="vibrant",
+                 allow=["vibrant", "teal_orange", "lift_glow", "bloom_warm", "moody_cool"]),
+    "tiktok": dict(base="vibrant",
+                   allow=["vibrant", "teal_orange", "lift_glow", "bloom_warm", "moody_cool"]),
+    "square": dict(base="vibrant",
+                   allow=["vibrant", "warm_golden", "lift_glow", "bloom_warm"]),
+    "vlog": dict(base="neutral",
+                 allow=["neutral", "warm_golden", "lift_glow"]),
+    "cinematic": dict(base="teal_orange",
+                      allow=["teal_orange", "moody_cool", "film_vintage", "lift_glow", "bloom_warm"]),
+    "travel": dict(base="warm_golden",
+                   allow=["warm_golden", "vibrant", "bloom_warm", "teal_orange", "lift_glow"]),
+}
 _FX = {
     "short": dict(motion=True, grade=True, transitions=_PUNCHY),
     "reel": dict(motion=True, grade=True, transitions=_PUNCHY),
@@ -71,4 +91,14 @@ def get_preset(name: str) -> Dict[str, Any]:
         p["motion"], p["grade"], p["transitions"] = False, False, []
     else:
         p["motion"], p["grade"], p["transitions"] = fx["motion"], fx["grade"], list(fx["transitions"])
+
+    # Style/Look layer (colour + lighting). Needs grading enabled (FX on) and the
+    # AUTOEDIT_LOOKS switch (default on). When off we fall back to the coherent
+    # "neutral" grade, i.e. the classic subtle eq+vignette.
+    looks = _LOOKS.get(key, dict(base="neutral", allow=["neutral"]))
+    looks_on = bool(p["grade"]) and os.environ.get("AUTOEDIT_LOOKS", "1") != "0"
+    p["looks_on"] = looks_on
+    p["base_look"] = looks["base"] if looks_on else "neutral"
+    p["look_allow"] = list(looks["allow"]) if looks_on else []
+    p["look_strength"] = max(0.0, min(1.5, float(os.environ.get("AUTOEDIT_LOOK_STRENGTH", "1.0"))))
     return p

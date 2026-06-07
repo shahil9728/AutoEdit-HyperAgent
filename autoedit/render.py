@@ -48,49 +48,116 @@ def _run(cmd: List[str], cwd: str, label: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# per-clip styling: reframe + chosen effect + grade
+# per-clip styling: reframe + camera move + colour/light look
 # --------------------------------------------------------------------------- #
-def _video_chain(target: dict, focus: float, effect: str, dur: float) -> str:
+def _look_filters(look: str, s: float):
+    """Map a look name to (linear ffmpeg filter list, needs_bloom).
+
+    `s` scales intensity (AUTOEDIT_LOOK_STRENGTH). Bloom (a highlight glow) is a
+    split/blend subgraph the caller splices in, so it is flagged here, not
+    returned as a linear filter.
+    """
+    if look == "vibrant":
+        return ([f"eq=contrast={1 + 0.14 * s:.3f}:saturation={1 + 0.30 * s:.3f}:gamma={1 - 0.02 * s:.3f}",
+                 f"vibrance=intensity={0.30 * s:.3f}"], False)
+    if look == "teal_orange":
+        return ([f"colorbalance=rs={-0.06 * s:.3f}:bs={0.06 * s:.3f}:rh={0.07 * s:.3f}:bh={-0.07 * s:.3f}",
+                 f"eq=contrast={1 + 0.10 * s:.3f}:saturation={1 + 0.10 * s:.3f}"], False)
+    if look == "warm_golden":
+        return ([f"colortemperature=temperature={int(5500 - 900 * s)}:mix={min(1.0, 0.70 * s):.3f}",
+                 f"eq=contrast={1 + 0.08 * s:.3f}:saturation={1 + 0.12 * s:.3f}:brightness={0.02 * s:.3f}"], False)
+    if look == "moody_cool":
+        return ([f"colortemperature=temperature={int(6500 + 2000 * s)}:mix={min(1.0, 0.55 * s):.3f}",
+                 f"eq=contrast={1 + 0.15 * s:.3f}:saturation={1 - 0.20 * s:.3f}:gamma={1 - 0.04 * s:.3f}"], False)
+    if look == "lift_glow":          # dark footage: lift shadows + warm + soft glow
+        return ([f"eq=brightness={0.07 * s:.3f}:gamma={1 + 0.14 * s:.3f}:contrast={1 + 0.05 * s:.3f}:saturation={1 + 0.06 * s:.3f}",
+                 f"colortemperature=temperature={int(5400 - 300 * s)}:mix={min(1.0, 0.40 * s):.3f}"], True)
+    if look == "bloom_warm":         # bright/scenic: warm + dreamy highlight bloom
+        return ([f"eq=contrast={1 + 0.06 * s:.3f}:saturation={1 + 0.10 * s:.3f}",
+                 f"colortemperature=temperature={int(5400 - 300 * s)}:mix={min(1.0, 0.35 * s):.3f}"], True)
+    if look == "film_vintage":
+        return (["curves=preset=vintage",
+                 f"eq=contrast={1 + 0.05 * s:.3f}:saturation={1 - 0.05 * s:.3f}",
+                 f"noise=alls={max(1, int(7 * s))}:allf=t"], False)
+    if look == "mono":
+        return (["hue=s=0", f"eq=contrast={1 + 0.16 * s:.3f}:gamma={1 - 0.03 * s:.3f}"], False)
+    # neutral / none -> the classic subtle grade
+    return (["eq=contrast=1.06:saturation=1.12:gamma=0.98"], False)
+
+
+def _zoompan(effect: str, dur: float, w: int, h: int, fps: int):
+    frames = max(1, int(round(dur * fps)))
+    cx, cy = "iw/2-(iw/zoom/2)", "ih/2-(ih/zoom/2)"
+    speed = (_ZOOM - 1.0) / frames
+    if effect == "push_in":
+        return f"zoompan=z='min(1+{speed:.6f}*on,{_ZOOM})':x='{cx}':y='{cy}':d=1:s={w}x{h}:fps={fps}"
+    if effect == "pull_out":
+        return f"zoompan=z='max({_ZOOM}-{speed:.6f}*on,1.0)':x='{cx}':y='{cy}':d=1:s={w}x{h}:fps={fps}"
+    if effect == "pan_left":
+        return f"zoompan=z='{_PANZ}':x='(iw-iw/zoom)*on/{frames}':y='{cy}':d=1:s={w}x{h}:fps={fps}"
+    if effect == "pan_right":
+        return f"zoompan=z='{_PANZ}':x='(iw-iw/zoom)*(1-on/{frames})':y='{cy}':d=1:s={w}x{h}:fps={fps}"
+    return None
+
+
+def _video_graph(target: dict, clip, dur: float, intro: bool) -> str:
+    """Full per-clip video filtergraph from [0:v] to [v]:
+    reframe -> camera move -> colour/light look -> (bloom) -> intro fade -> vignette.
+    """
     w, h, fps = target["width"], target["height"], target["fps"]
     ar = w / h
     cropw = f"floor(min(iw\\,ih*{ar:.6f})/2)*2"
-    x = f"(iw-{cropw})*{focus}"
-    parts = [f"crop={cropw}:ih:{x}:0", f"scale={w}:{h}", "setsar=1", f"fps={fps}", "format=yuv420p"]
+    x = f"(iw-{cropw})*{clip.focus_x}"
+    pre = [f"crop={cropw}:ih:{x}:0", f"scale={w}:{h}", "setsar=1", f"fps={fps}", "format=yuv420p"]
 
-    if effect and effect != "none":
-        frames = max(1, int(round(dur * fps)))
-        cx, cy = "iw/2-(iw/zoom/2)", "ih/2-(ih/zoom/2)"
-        speed = (_ZOOM - 1.0) / frames
-        zp = None
-        if effect == "push_in":
-            zp = f"zoompan=z='min(1+{speed:.6f}*on,{_ZOOM})':x='{cx}':y='{cy}':d=1:s={w}x{h}:fps={fps}"
-        elif effect == "pull_out":
-            zp = f"zoompan=z='max({_ZOOM}-{speed:.6f}*on,1.0)':x='{cx}':y='{cy}':d=1:s={w}x{h}:fps={fps}"
-        elif effect == "pan_left":
-            zp = f"zoompan=z='{_PANZ}':x='(iw-iw/zoom)*on/{frames}':y='{cy}':d=1:s={w}x{h}:fps={fps}"
-        elif effect == "pan_right":
-            zp = f"zoompan=z='{_PANZ}':x='(iw-iw/zoom)*(1-on/{frames})':y='{cy}':d=1:s={w}x{h}:fps={fps}"
+    if clip.effect and clip.effect != "none":
+        zp = _zoompan(clip.effect, dur, w, h, fps)
         if zp:
-            parts.append(zp)
+            pre.append(zp)
 
-    if target.get("grade"):
-        parts += ["eq=contrast=1.06:saturation=1.12:gamma=0.98", "vignette=PI/6"]
+    graded = bool(target.get("grade"))
+    bloom = False
+    strength = float(target.get("look_strength", 1.0))
+    if graded:
+        look_fs, bloom = _look_filters(clip.look or "neutral", strength)
+        pre += look_fs
 
-    return ",".join(parts)
+    post = []
+    if intro:                       # cinematic exposure ramp-in on the opening clip
+        post.append("fade=t=in:st=0:d=0.4")
+    if graded:
+        vig = "vignette=PI/4.5" if clip.look in ("moody_cool", "film_vintage") else "vignette=PI/6"
+        post.append(vig)
+
+    if not bloom:
+        chain = ",".join(pre + post)
+        return f"[0:v]{chain}[v]"
+
+    # Bloom = highlight glow: split, blur one copy, screen-blend it back, then post.
+    base = ",".join(pre)
+    op = min(0.5, 0.38 * strength)
+    g = (f"[0:v]{base}[b];"
+         f"[b]split[b1][b2];[b2]gblur=sigma=14[bb];")
+    if post:
+        g += (f"[b1][bb]blend=all_mode=screen:all_opacity={op:.3f}[bl];"
+              f"[bl]{','.join(post)}[v]")
+    else:
+        g += f"[b1][bb]blend=all_mode=screen:all_opacity={op:.3f}[v]"
+    return g
 
 
-def _segment_cmd(edl: EDL, clip, out_name: str) -> List[str]:
+def _segment_cmd(edl: EDL, clip, out_name: str, intro: bool = False) -> List[str]:
     src = os.path.abspath(edl.source.path)
     dur = max(0.05, clip.src_out - clip.src_in)
-    vchain = _video_chain(edl.target, clip.focus_x, clip.effect, dur)
+    vgraph = _video_graph(edl.target, clip, dur, intro)
     cmd = ["ffmpeg", "-y", "-nostdin", "-threads", _THREADS,
            "-ss", f"{clip.src_in:.3f}", "-i", src, "-t", f"{dur:.3f}"]
     if edl.source.has_audio:
-        fc = f"[0:v]{vchain}[v];[0:a]aresample=44100,aformat=channel_layouts=stereo[a]"
+        fc = f"{vgraph};[0:a]aresample=44100,aformat=channel_layouts=stereo[a]"
         cmd += ["-filter_complex", fc, "-map", "[v]", "-map", "[a]",
                 "-c:a", "aac", "-ar", "44100", "-ac", "2"]
     else:
-        cmd += ["-filter_complex", f"[0:v]{vchain}[v]", "-map", "[v]"]
+        cmd += ["-filter_complex", vgraph, "-map", "[v]"]
     cmd += ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "22",
             "-pix_fmt", "yuv420p", out_name]
     return cmd
@@ -136,6 +203,9 @@ def _xfade_cmd(edl: EDL, segs: List[str], durs: List[float], body_name: str) -> 
         cum += durs[k - 1]
         offset = cum - k * d
         t = trans[(k - 1) % len(trans)]
+        # The Style agent can request a white flash punching into a clip.
+        if k < len(edl.timeline) and getattr(edl.timeline[k], "flash_in", False):
+            t = "fadewhite"
         out = "[vout]" if k == n - 1 else f"[vx{k}]"
         vparts.append(f"{prev}[{k}:v]xfade=transition={t}:duration={d}:offset={offset:.3f}{out}")
         prev = out
@@ -254,11 +324,14 @@ def render(edl: EDL, workdir: str, basename: str) -> str:
     final = f"{basename}_{tag}.mp4"
     n = len(edl.timeline)
 
+    looks_on = bool(edl.target.get("looks_on"))
     segs, durs = [], []
     for i, clip in enumerate(edl.timeline):
         seg = f"{basename}_{tag}_seg{i}.mp4"
-        _run(_segment_cmd(edl, clip, seg), workdir,
-             f"cut+style {i + 1}/{n} fx={clip.effect} ({clip.src_in:.1f}-{clip.src_out:.1f}s)")
+        intro = i == 0 and looks_on and n > 1
+        _run(_segment_cmd(edl, clip, seg, intro=intro), workdir,
+             f"cut+style {i + 1}/{n} fx={clip.effect} look={clip.look} "
+             f"({clip.src_in:.1f}-{clip.src_out:.1f}s)")
         segs.append(seg)
         durs.append(max(0.05, clip.src_out - clip.src_in))
 

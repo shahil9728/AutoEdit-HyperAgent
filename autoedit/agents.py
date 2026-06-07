@@ -245,7 +245,9 @@ def select_blended(shots, transcript: Transcript, visual_w: float, speech_w: flo
         clips.append(Clip(
             id=f"shot@{sh['start']:.0f}s", src_in=sh["start"], src_out=sh["end"],
             score=c["blended"], visual_score=c["vis"], speech_score=c["sp"],
-            motion=sh.get("motion_norm", 0.5), reason=c["reason"],
+            motion=sh.get("motion_norm", 0.5),
+            brightness=sh.get("brightness", 0.0), saturation=sh.get("saturation", 0.0),
+            exposure=sh.get("exposure", 0.0), reason=c["reason"],
         ))
     return clips
 
@@ -296,4 +298,57 @@ def assign_effects(timeline, target):
             eff, ci = _next(_CALM_POOL, ci, prev)
         c.effect = eff
         prev = eff
+    return timeline
+
+
+# --------------------------------------------------------------------------- #
+# Style / Look Agent — choose a colour + lighting grade PER CLIP from the
+# scenario the analysis describes (how bright, how colourful, how busy, where in
+# the story). This is a separate layer from the camera-motion Effects agent:
+# `effect` moves the frame, `look` colours and lights it. The render layer turns
+# each look name into a concrete ffmpeg filter chain.
+# --------------------------------------------------------------------------- #
+def assign_looks(timeline, target):
+    """Pick a colour/light look for each clip from its scenario.
+
+    Heuristic 'understanding' over the visual metrics:
+      * dark / underexposed     -> lift_glow  (brighten + warm lift; fixes AND styles)
+      * bright, calm, scenic     -> bloom_warm (dreamy highlight glow)
+      * busy / very colourful    -> vibrant    (punchy contrast + saturation)
+      * flat / low-saturation    -> moody_cool (filmic cool, crushed)
+      * otherwise                -> the format's base look (the coherent grade)
+    Looks are constrained to the format's allow-list so the reel still reads as
+    one film. A white flash punches into high-energy clips, and the opening clip
+    gets a short exposure ramp-in (handled in render via the `intro` position).
+    Swap this for an LLM over the same metrics when you want real taste.
+    """
+    base = target.get("base_look", "neutral")
+    allow = target.get("look_allow") or []
+    if not target.get("looks_on") or not allow:
+        for c in timeline:
+            c.look, c.flash_in = base, False
+        return timeline
+
+    def pick(name):
+        return name if name in allow else base
+
+    for i, c in enumerate(timeline):
+        has_metrics = c.brightness > 0 or c.saturation > 0
+        if not has_metrics:                      # transcript-only path: no picture data
+            look = base
+        elif c.brightness < 90:                  # dark footage: lift + warm glow
+            look = pick("lift_glow")             # (luma only — exposure also dips when
+            #                                      a clip is over-bright, so don't use it here)
+        elif c.brightness > 150 and c.motion < 0.6:
+            look = pick("bloom_warm")            # bright + calm: dreamy bloom
+        elif c.motion >= 0.6 or c.saturation > 100:
+            look = pick("vibrant")               # action / colourful: punch
+        elif c.saturation < 55:
+            look = pick("moody_cool")            # flat: filmic cool
+        else:
+            look = base
+        c.look = look
+        # White flash punching into a high-energy clip (never on the opener).
+        c.flash_in = bool(i > 0 and has_metrics and c.motion >= 0.6
+                          and "flash" not in (target.get("no_flash") or []))
     return timeline
