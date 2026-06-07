@@ -304,7 +304,13 @@ class Handler(BaseHTTPRequestHandler):
             fmts = [q["format"][0]]
         else:
             fmts = ["reel"]
-        budget = float((q.get("budget") or ["12"])[0])
+        # budget = target cut length in seconds. 0 / absent => auto (keep all
+        # uploaded clips up to the platform max; the pipeline decides).
+        try:
+            budget = float((q.get("budget") or ["0"])[0])
+        except ValueError:
+            budget = 0.0
+        budget = budget if budget > 0 else None
 
         work = tempfile.mkdtemp(prefix="job_")
         try:
@@ -324,7 +330,8 @@ class Handler(BaseHTTPRequestHandler):
         with LOCK:
             JOBS[job_id] = {"status": "running", "stage": "queued", "created": time.time(),
                             "work": work, "formats": {f: {"status": "pending"} for f in fmts}}
-        log(f"job {job_id[:6]} queued: {len(paths)} files ({total_mb:.1f} MB), formats={fmts}, budget={budget}")
+        log(f"job {job_id[:6]} queued: {len(paths)} files ({total_mb:.1f} MB), "
+            f"formats={fmts}, budget={budget if budget else 'auto (all clips)'}")
         threading.Thread(target=_worker, args=(job_id, paths, fmts, budget, work), daemon=True).start()
         self._json(202, {"job_id": job_id, "formats": fmts, "files": len(paths)})
 

@@ -37,7 +37,10 @@ _WEIGHTS = {
 }
 
 # Look & feel: motion (punch-in zoom), grade (colour), transition palette (xfade)
-_PUNCHY = ["slideleft", "slideright", "fade", "zoomin", "circleopen"]
+# Lead with cinematic moves (a smooth directional push, an energetic zoom, a
+# soft dissolve) instead of a literal "slideleft" — the slide is what made the
+# old reels read as a plain slideshow.
+_PUNCHY = ["smoothleft", "zoomin", "dissolve", "smoothup", "circleopen"]
 _FX = {
     "short": dict(motion=True, grade=True, transitions=_PUNCHY),
     "reel": dict(motion=True, grade=True, transitions=_PUNCHY),

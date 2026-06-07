@@ -67,7 +67,20 @@ def run_pipeline(
 
     for fmt in formats:
         target = get_preset(fmt)
-        clip_budget = budget if budget else min(target["max_duration"], 30.0)
+        # Budget = how many seconds of footage Selection keeps.
+        #   * explicit budget (user picked a target length) -> honour it.
+        #   * auto (budget falsy) + known clip boundaries (a multi-clip upload)
+        #     -> keep EVERY uploaded clip, capped only at the platform max. The
+        #     user chose those clips on purpose, so trimming to a tiny default
+        #     and silently dropping one is the wrong call.
+        #   * auto + single video -> a sensible platform-length default.
+        max_dur = float(target["max_duration"])
+        if budget and budget > 0:
+            clip_budget = float(budget)
+        elif shots_hint:
+            clip_budget = min(meta.duration + 0.5, max_dur)
+        else:
+            clip_budget = min(max_dur, 60.0)
         vw, sw = target["visual_weight"], target["speech_weight"]
 
         # 2. Selection Agent (blended visual + speech, weighted per format) -- #

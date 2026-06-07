@@ -111,9 +111,10 @@
 
   <div class="card">
     <div class="step"><span class="num">3</span><h2>Length</h2></div>
-    <div class="ctl"><label>Target cut length</label>
-      <select id="len"><option value="8">~8 seconds</option><option value="12" selected>~12 seconds</option>
-      <option value="20">~20 seconds</option><option value="30">~30 seconds</option></select></div>
+    <div class="ctl"><label>Target length — “Keep all clips” combines everything you uploaded</label>
+      <select id="len"><option value="0" selected>Keep all clips (auto)</option>
+      <option value="15">~15 seconds</option><option value="30">~30 seconds</option>
+      <option value="45">~45 seconds</option><option value="60">~60 seconds</option></select></div>
   </div>
 
   <div class="exec"><button class="go" id="go" disabled>✦ Execute</button><span class="hint" id="hint">Add a clip and pick a format.</span></div>
@@ -125,7 +126,7 @@
     <div class="results" id="results"></div>
   </div>
 
-  <div class="footnote">Backend: <span id="burl"></span> · UI build 6</div>
+  <div class="footnote">Backend: <span id="burl"></span> · UI build 7</div>
 </div>
 
 <script>

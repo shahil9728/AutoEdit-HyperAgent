@@ -251,21 +251,34 @@ def select_blended(shots, transcript: Transcript, visual_w: float, speech_w: flo
 
 
 # --------------------------------------------------------------------------- #
-# Effects Agent — choose a styling effect PER CLIP from its analysis, instead
-# of blindly zooming everything. Zoom is just one option; clips that are
-# already moving (or too short) are left alone.
+# Effects Agent — choose a styling effect PER CLIP from its analysis. Every clip
+# that is long enough gets *some* camera move: a flat, motionless lead clip is
+# exactly what made earlier reels feel like a plain cut-and-slide. The move is
+# content-aware — calm clips get a stronger push/pull, already-busy clips get a
+# gentle pan that complements (rather than fights) their motion.
 # --------------------------------------------------------------------------- #
-_STATIC_POOL = ["push_in", "pull_out", "pan_left", "pan_right"]
+_CALM_POOL = ["push_in", "pull_out", "pan_right", "pan_left"]   # add life
+_BUSY_POOL = ["pan_right", "pan_left", "push_in"]               # gentle, complements
+
+
+def _next(pool, i, prev):
+    """Next effect from a pool, skipping a repeat of the previous clip's."""
+    eff = pool[i % len(pool)]
+    if eff == prev:
+        i += 1
+        eff = pool[i % len(pool)]
+    return eff, i + 1
 
 
 def assign_effects(timeline, target):
-    """Pick an effect for each clip from its motion / duration / variety.
+    """Give every clip a content-aware camera move (the Effects agent).
 
     Heuristic 'understanding' using the visual-analysis motion metric:
-      * already-dynamic clips -> none (don't fight real movement)
-      * very short clips       -> none (added motion looks like jitter)
-      * static clips           -> a varied push / pull / pan to add life
-      * medium motion          -> gentle, alternating
+      * ultra-short clips (<1.0s) -> none (a move would read as jitter)
+      * busy clips (motion >= 0.6) -> a gentle pan that complements the motion
+      * calmer clips               -> a stronger push / pull / pan
+    Adjacent clips never share an effect, so a multi-clip reel always shows
+    visible, varied movement instead of a flat slide.
     Swap this for an LLM over the same metrics when you want real taste.
     """
     if not target.get("motion"):
@@ -273,21 +286,14 @@ def assign_effects(timeline, target):
             c.effect = "none"
         return timeline
 
-    prev, pi = None, 0
+    prev, ci, bi = None, 0, 0
     for c in timeline:
-        m = c.motion  # 0..1 normalised motion level
-        if c.duration < 1.2:
+        if c.duration < 1.0:
             eff = "none"
-        elif m >= 0.6:               # already moving — leave it alone
-            eff = "none"
-        elif m <= 0.35:              # static — add life, varied
-            eff = _STATIC_POOL[pi % len(_STATIC_POOL)]
-            pi += 1
-            if eff == prev:
-                eff = _STATIC_POOL[pi % len(_STATIC_POOL)]
-                pi += 1
-        else:                        # medium — gentle, avoid repeats
-            eff = "push_in" if prev != "push_in" else "none"
+        elif c.motion >= 0.6:        # already moving — complement with a gentle pan
+            eff, bi = _next(_BUSY_POOL, bi, prev)
+        else:                        # calm — add a stronger move
+            eff, ci = _next(_CALM_POOL, ci, prev)
         c.effect = eff
         prev = eff
     return timeline
